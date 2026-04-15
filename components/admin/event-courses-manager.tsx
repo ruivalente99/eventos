@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Trash2, AlertTriangle, Pencil, ChevronUp, ChevronDown, Loader2 } from "lucide-react";
+import { Plus, Trash2, AlertTriangle, Pencil, ChevronUp, ChevronDown, Loader2, CheckSquare, Square } from "lucide-react";
 
 interface Course {
   id: string;
@@ -31,7 +31,7 @@ export function EventCoursesManager({
   const [courses, setCourses] = useState(initialCourses);
   const [open, setOpen] = useState(false);
   const [newName, setNewName] = useState("");
-  const [selectedGlobal, setSelectedGlobal] = useState<string>("");
+  const [selectedGlobals, setSelectedGlobals] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<"new" | "global">("new");
 
@@ -51,20 +51,43 @@ export function EventCoursesManager({
   const availableGlobal = globalCourses.filter((g) => !courses.some((c) => c.name === g.name));
 
   async function addCourse(name: string, globalCourseId?: string) {
-    setLoading(true);
     const res = await fetch(`/api/events/${eventId}/courses`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, globalCourseId }),
     });
+    if (!res.ok) return null;
+    return res.json() as Promise<Course>;
+  }
+
+  async function handleAddNew() {
+    if (!newName.trim()) return;
+    setLoading(true);
+    const course = await addCourse(newName.trim());
     setLoading(false);
-    if (!res.ok) { toast({ title: "Erro ao adicionar curso", variant: "destructive" }); return; }
-    const course = await res.json();
-    setCourses([...courses, course]);
+    if (!course) { toast({ title: "Erro ao adicionar curso", variant: "destructive" }); return; }
+    setCourses((prev) => [...prev, course]);
     setOpen(false);
     setNewName("");
-    setSelectedGlobal("");
     toast({ title: "Curso adicionado!" });
+  }
+
+  async function handleAddSelected() {
+    if (selectedGlobals.size === 0) return;
+    setLoading(true);
+    const toAdd = availableGlobal.filter((g) => selectedGlobals.has(g.id));
+    const results = await Promise.all(toAdd.map((g) => addCourse(g.name, g.id)));
+    setLoading(false);
+    const added = results.filter(Boolean) as Course[];
+    if (added.length < toAdd.length) {
+      toast({ title: `${toAdd.length - added.length} curso(s) falharam`, variant: "destructive" });
+    }
+    if (added.length > 0) {
+      setCourses((prev) => [...prev, ...added]);
+      toast({ title: `${added.length} curso(s) adicionado(s)!` });
+    }
+    setOpen(false);
+    setSelectedGlobals(new Set());
   }
 
   async function toggleDisqualified(id: string, disqualified: boolean) {
@@ -143,17 +166,24 @@ export function EventCoursesManager({
       }
       toast({ title: "Nome atualizado na lista global!" });
     } else {
+      // Event-only rename: also disconnect from global course if it had one
+      const body: Record<string, unknown> = { name: editName.trim() };
+      if (editTarget.globalCourseId) body.globalCourseId = null;
       const res = await fetch(`/api/events/${eventId}/courses/${editTarget.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: editName.trim() }),
+        body: JSON.stringify(body),
       });
       setEditLoading(false);
       if (!res.ok) { toast({ title: "Erro ao atualizar nome", variant: "destructive" }); return; }
       toast({ title: "Nome atualizado!" });
     }
 
-    setCourses(courses.map((c) => c.id === editTarget.id ? { ...c, name: editName.trim() } : c));
+    setCourses(courses.map((c) =>
+      c.id === editTarget.id
+        ? { ...c, name: editName.trim(), globalCourseId: editScope === "event" ? null : c.globalCourseId }
+        : c
+    ));
     setEditTarget(null);
   }
 
@@ -252,41 +282,82 @@ export function EventCoursesManager({
           {tab === "new" ? (
             <div className="space-y-2">
               <Label>Nome do curso</Label>
-              <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nome do curso" />
+              <Input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="Nome do curso"
+                onKeyDown={(e) => e.key === "Enter" && handleAddNew()}
+              />
             </div>
           ) : (
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {availableGlobal.map((g) => (
-                <button
-                  key={g.id}
-                  onClick={() => setSelectedGlobal(g.id)}
-                  className={`w-full text-left p-3 rounded-lg border transition-colors ${selectedGlobal === g.id ? "border-primary bg-primary/5" : "hover:bg-muted"}`}
-                >
-                  {g.name}
-                </button>
-              ))}
-              {availableGlobal.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Todos os cursos globais já foram adicionados.
-                </p>
+            <div className="space-y-2">
+              {availableGlobal.length > 0 && (
+                <div className="flex items-center justify-between pb-1 border-b">
+                  <span className="text-xs text-muted-foreground">
+                    {selectedGlobals.size} selecionado{selectedGlobals.size !== 1 ? "s" : ""}
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setSelectedGlobals(new Set(availableGlobal.map((g) => g.id)))}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Selecionar tudo
+                    </button>
+                    <span className="text-muted-foreground text-xs">·</span>
+                    <button
+                      onClick={() => setSelectedGlobals(new Set())}
+                      className="text-xs text-muted-foreground hover:underline"
+                    >
+                      Remover tudo
+                    </button>
+                  </div>
+                </div>
               )}
+              <div className="max-h-60 overflow-y-auto space-y-1">
+                {availableGlobal.map((g) => {
+                  const selected = selectedGlobals.has(g.id);
+                  return (
+                    <button
+                      key={g.id}
+                      onClick={() => {
+                        setSelectedGlobals((prev) => {
+                          const next = new Set(prev);
+                          selected ? next.delete(g.id) : next.add(g.id);
+                          return next;
+                        });
+                      }}
+                      className={`w-full text-left px-3 py-2 rounded-lg border flex items-center gap-2 transition-colors ${selected ? "border-primary bg-primary/5" : "hover:bg-muted border-transparent"}`}
+                    >
+                      {selected
+                        ? <CheckSquare className="h-4 w-4 text-primary shrink-0" />
+                        : <Square className="h-4 w-4 text-muted-foreground shrink-0" />
+                      }
+                      <span className="text-sm">{g.name}</span>
+                    </button>
+                  );
+                })}
+                {availableGlobal.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Todos os cursos globais já foram adicionados.
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => { setOpen(false); setSelectedGlobals(new Set()); setNewName(""); }}>
+              Cancelar
+            </Button>
             <Button
-              disabled={loading || (tab === "new" ? !newName.trim() : !selectedGlobal)}
-              onClick={() => {
-                if (tab === "new") addCourse(newName.trim());
-                else {
-                  const g = globalCourses.find((x) => x.id === selectedGlobal);
-                  if (g) addCourse(g.name, g.id);
-                }
-              }}
+              disabled={loading || (tab === "new" ? !newName.trim() : selectedGlobals.size === 0)}
+              onClick={() => tab === "new" ? handleAddNew() : handleAddSelected()}
             >
               {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Adicionar
+              {tab === "global" && selectedGlobals.size > 1
+                ? `Adicionar ${selectedGlobals.size}`
+                : "Adicionar"
+              }
             </Button>
           </DialogFooter>
         </DialogContent>

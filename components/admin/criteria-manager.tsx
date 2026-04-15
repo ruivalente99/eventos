@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Trash2, ChevronUp, ChevronDown, Loader2 } from "lucide-react";
+import { codeFromName } from "@/lib/utils";
 
 interface Criterion {
   id: string; name: string; code: string; weight: number;
@@ -20,6 +21,7 @@ export function CriteriaManager({ eventId, initialCriteria }: { eventId: string;
   const [criteria, setCriteria] = useState(initialCriteria);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", code: "", weight: "1", minScore: "0", maxScore: "100", type: "CATEGORY" });
+  const [codeManuallyEdited, setCodeManuallyEdited] = useState(false);
   const [loading, setLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Criterion | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -43,6 +45,7 @@ export function CriteriaManager({ eventId, initialCriteria }: { eventId: string;
     setCriteria([...criteria, c]);
     setOpen(false);
     setForm({ name: "", code: "", weight: "1", minScore: "0", maxScore: "100", type: "CATEGORY" });
+    setCodeManuallyEdited(false);
     toast({ title: "Critério adicionado!" });
   }
 
@@ -181,18 +184,40 @@ export function CriteriaManager({ eventId, initialCriteria }: { eventId: string;
       </div>
 
       {/* Add dialog */}
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setCodeManuallyEdited(false); setForm({ name: "", code: "", weight: "1", minScore: "0", maxScore: "100", type: "CATEGORY" }); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Novo Critério</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Nome</Label>
-                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Tema / Sátira" />
+                <Input
+                  value={form.name}
+                  onChange={(e) => {
+                    const name = e.target.value;
+                    setForm((f) => ({
+                      ...f,
+                      name,
+                      // Auto-fill code unless user has manually overridden it
+                      code: codeManuallyEdited ? f.code : codeFromName(name),
+                    }));
+                  }}
+                  placeholder="Tema / Sátira"
+                />
               </div>
               <div className="space-y-2">
-                <Label>Código</Label>
-                <Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} placeholder="TEMA" />
+                <Label className="flex items-center gap-1">
+                  Código
+                  {!codeManuallyEdited && <span className="text-xs text-muted-foreground">(auto)</span>}
+                </Label>
+                <Input
+                  value={form.code}
+                  onChange={(e) => {
+                    setCodeManuallyEdited(true);
+                    setForm({ ...form, code: e.target.value.toUpperCase() });
+                  }}
+                  placeholder="TEMA"
+                />
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3">
