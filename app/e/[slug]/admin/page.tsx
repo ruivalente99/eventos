@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Users, BookOpen, MapPin, ClipboardCheck } from "lucide-react";
 import Link from "next/link";
+import { EventActiveToggle } from "@/components/admin/event-active-toggle";
 
 export default async function EventAdminPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -29,12 +29,12 @@ export default async function EventAdminPage({ params }: { params: Promise<{ slu
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-xl font-bold">{event.name}</h2>
-        <div className="flex items-center gap-2 mt-1">
-          <Badge variant={event.active ? "success" : "secondary"}>{event.active ? "Ativo" : "Inativo"}</Badge>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold">{event.name}</h2>
           <span className="text-sm text-muted-foreground">eventos.cvutad.pt/e/{event.slug}</span>
         </div>
+        <EventActiveToggle eventId={event.id} initialActive={event.active} />
       </div>
 
       <div className="grid grid-cols-2 gap-3">

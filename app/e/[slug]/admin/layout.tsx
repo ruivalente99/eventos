@@ -39,7 +39,13 @@ export default async function EventAdminLayout({
 
   return (
     <div className="min-h-screen flex flex-col">
-      <TopNav items={navItems} title={event.name} subtitle="Admin" />
+      <TopNav
+        items={navItems}
+        title={event.name}
+        subtitle="Admin"
+        backHref={isSuperAdmin ? "/admin" : "/dashboard"}
+        backLabel="Voltar"
+      />
       <main className="flex-1 p-4 max-w-4xl mx-auto w-full pb-8">{children}</main>
     </div>
   );

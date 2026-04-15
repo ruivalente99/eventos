@@ -13,6 +13,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (body.minScore !== undefined) data.minScore = body.minScore;
   if (body.maxScore !== undefined) data.maxScore = body.maxScore;
   if (body.active !== undefined) data.active = body.active;
+  if (body.displayOrder !== undefined) data.displayOrder = body.displayOrder;
   const criterion = await prisma.evaluationCriteria.update({ where: { id: criterionId }, data });
   return NextResponse.json(criterion);
 }

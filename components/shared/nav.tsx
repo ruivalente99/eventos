@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { LogOut } from "lucide-react";
+import { LogOut, ChevronLeft } from "lucide-react";
 
 interface NavItem { label: string; href: string; icon?: React.ReactNode }
 
@@ -12,14 +12,24 @@ interface NavProps {
   items: NavItem[];
   title: string;
   subtitle?: string;
+  backHref?: string;
+  backLabel?: string;
 }
 
-export function TopNav({ items, title, subtitle }: NavProps) {
+export function TopNav({ items, title, subtitle, backHref, backLabel }: NavProps) {
   const pathname = usePathname();
   return (
     <header className="border-b bg-background sticky top-0 z-40">
       <div className="flex items-center justify-between px-4 h-14">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {backHref && (
+            <Link href={backHref}>
+              <Button variant="ghost" size="icon" className="h-8 w-8 -ml-1 shrink-0">
+                <ChevronLeft className="h-4 w-4" />
+                <span className="sr-only">{backLabel ?? "Voltar"}</span>
+              </Button>
+            </Link>
+          )}
           <div>
             <p className="font-semibold text-sm leading-none">{title}</p>
             {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
