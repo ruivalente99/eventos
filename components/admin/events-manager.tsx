@@ -4,12 +4,12 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
-import { Plus, ExternalLink, Trash2, Settings, Users, BookOpen, MapPin } from "lucide-react";
+import { Plus, ExternalLink, Trash2, Settings, Users, BookOpen, MapPin, Loader2 } from "lucide-react";
 import { slugify } from "@/lib/utils";
 import Link from "next/link";
 
@@ -23,8 +23,10 @@ export function EventsManager({ initialEvents }: { initialEvents: EventWithCount
   const router = useRouter();
   const [events, setEvents] = useState(initialEvents);
   const [open, setOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<EventWithCount | null>(null);
   const [form, setForm] = useState({ name: "", slug: "", description: "" });
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   async function createEvent() {
     setLoading(true);
@@ -44,18 +46,23 @@ export function EventsManager({ initialEvents }: { initialEvents: EventWithCount
   }
 
   async function toggleActive(id: string, active: boolean) {
-    await fetch(`/api/events/${id}`, {
+    const res = await fetch(`/api/events/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ active }),
     });
+    if (!res.ok) { toast({ title: "Erro ao atualizar evento", variant: "destructive" }); return; }
     setEvents(events.map((e) => (e.id === id ? { ...e, active } : e)));
   }
 
-  async function deleteEvent(id: string) {
-    if (!confirm("Apagar evento e todos os dados? Esta ação é irreversível.")) return;
-    await fetch(`/api/events/${id}`, { method: "DELETE" });
-    setEvents(events.filter((e) => e.id !== id));
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const res = await fetch(`/api/events/${deleteTarget.id}`, { method: "DELETE" });
+    setDeleting(false);
+    if (!res.ok) { toast({ title: "Erro ao apagar evento", variant: "destructive" }); return; }
+    setEvents(events.filter((e) => e.id !== deleteTarget.id));
+    setDeleteTarget(null);
     toast({ title: "Evento apagado" });
   }
 
@@ -101,7 +108,7 @@ export function EventsManager({ initialEvents }: { initialEvents: EventWithCount
                   <Button variant="ghost" size="icon" asChild>
                     <Link href={`/e/${event.slug}`} target="_blank"><ExternalLink className="h-4 w-4" /></Link>
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => deleteEvent(event.id)}>
+                  <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(event)}>
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </div>
@@ -117,6 +124,7 @@ export function EventsManager({ initialEvents }: { initialEvents: EventWithCount
         )}
       </div>
 
+      {/* Create event dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Novo Evento</DialogTitle></DialogHeader>
@@ -147,7 +155,29 @@ export function EventsManager({ initialEvents }: { initialEvents: EventWithCount
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button onClick={createEvent} disabled={!form.name || !form.slug || loading}>Criar</Button>
+            <Button onClick={createEvent} disabled={!form.name || !form.slug || loading}>
+              {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Criar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Apagar evento</DialogTitle>
+            <DialogDescription>
+              Tens a certeza que queres apagar <strong>{deleteTarget?.name}</strong>? Todos os cursos, postos, júris e avaliações serão eliminados. Esta ação é irreversível.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancelar</Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={deleting}>
+              {deleting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Apagar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

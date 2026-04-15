@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EvaluationForm } from "@/components/jury/evaluation-form";
 import { LogOut, CheckCircle, Circle, ChevronRight, MapPin } from "lucide-react";
@@ -22,15 +22,16 @@ interface Props {
   initialEvaluations: Evaluation[];
 }
 
-export function JuryDashboard({ event, jurorId, jurorName, station, courses, criteria, initialEvaluations }: Props) {
+export function JuryDashboard({ event, jurorName, station, courses, criteria, initialEvaluations }: Props) {
   const [evaluations, setEvaluations] = useState(initialEvaluations);
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   const isEvaluated = (courseId: string) =>
     evaluations.some((e) => e.courseId === courseId && (station ? e.stationId === station.id : true));
 
-  const evaluated = courses.filter((c) => isEvaluated(c.id)).length;
-  const total = courses.filter((c) => !c.disqualified).length;
+  const activeCourses = courses.filter((c) => !c.disqualified);
+  const evaluated = activeCourses.filter((c) => isEvaluated(c.id)).length;
+  const total = activeCourses.length;
 
   function handleEvaluationSaved(evaluation: Evaluation) {
     setEvaluations((prev) => {
@@ -42,10 +43,14 @@ export function JuryDashboard({ event, jurorId, jurorName, station, courses, cri
       }
       return [...prev, evaluation];
     });
-    setSelectedCourse(null);
   }
 
-  if (selectedCourse) {
+  function handleNavigate(index: number) {
+    setSelectedIndex(index);
+  }
+
+  if (selectedIndex !== null) {
+    const selectedCourse = courses[selectedIndex];
     const existing = evaluations.find((e) => e.courseId === selectedCourse.id);
     return (
       <EvaluationForm
@@ -55,7 +60,10 @@ export function JuryDashboard({ event, jurorId, jurorName, station, courses, cri
         criteria={criteria}
         existingScores={existing?.scores ?? []}
         onSaved={handleEvaluationSaved}
-        onBack={() => setSelectedCourse(null)}
+        onBack={() => setSelectedIndex(null)}
+        courses={courses}
+        currentIndex={selectedIndex}
+        onNavigate={handleNavigate}
       />
     );
   }
@@ -106,12 +114,12 @@ export function JuryDashboard({ event, jurorId, jurorName, station, courses, cri
           </Card>
         )}
 
-        {courses.map((course) => {
+        {courses.map((course, index) => {
           const done = isEvaluated(course.id);
           return (
             <button
               key={course.id}
-              onClick={() => !course.disqualified && setSelectedCourse(course)}
+              onClick={() => !course.disqualified && setSelectedIndex(index)}
               disabled={course.disqualified}
               className="w-full text-left"
             >

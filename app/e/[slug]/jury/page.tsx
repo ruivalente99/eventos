@@ -16,7 +16,10 @@ export default async function JuryPage({ params }: { params: Promise<{ slug: str
     include: { station: true },
   });
 
-  // Admins can view jury interface too
+  // Event admins go to admin jury management, not the voting interface
+  if (eventUser?.role === "ADMIN") redirect(`/e/${slug}/admin/jury`);
+
+  // Must be a jury member or super admin to access voting
   if (!eventUser && session.user.globalRole !== "SUPER_ADMIN") redirect(`/e/${slug}`);
 
   const [courses, criteria, myEvaluations] = await Promise.all([

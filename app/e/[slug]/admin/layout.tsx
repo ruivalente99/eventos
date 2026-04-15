@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import { TopNav } from "@/components/shared/nav";
-import { LayoutDashboard, BookOpen, MapPin, Users, SlidersHorizontal, Trophy } from "lucide-react";
+import { LayoutDashboard, BookOpen, MapPin, Users, SlidersHorizontal, Trophy, ClipboardList } from "lucide-react";
 
 export default async function EventAdminLayout({
   children,
@@ -34,6 +34,7 @@ export default async function EventAdminLayout({
     { label: "Júris", href: `${base}/jury`, icon: <Users className="h-4 w-4" /> },
     { label: "Critérios", href: `${base}/criteria`, icon: <SlidersHorizontal className="h-4 w-4" /> },
     { label: "Classificação", href: `${base}/leaderboard`, icon: <Trophy className="h-4 w-4" /> },
+    { label: "Registos", href: `${base}/votes`, icon: <ClipboardList className="h-4 w-4" /> },
   ];
 
   return (
