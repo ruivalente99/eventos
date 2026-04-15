@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
 
   const event = await prisma.event.create({
     data: { name, description, slug },
+    include: { _count: { select: { users: true, courses: true, stations: true } } },
   });
   return NextResponse.json(event, { status: 201 });
 }

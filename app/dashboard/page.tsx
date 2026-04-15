@@ -14,7 +14,7 @@ export default async function DashboardPage() {
   if (session.user.globalRole === "SUPER_ADMIN") redirect("/admin");
 
   const eventRoles = await prisma.eventUser.findMany({
-    where: { userId: session.user.id },
+    where: { userId: session.user.id, event: { active: true } },
     include: { event: true, station: true },
   });
 
@@ -35,18 +35,20 @@ export default async function DashboardPage() {
           <Button variant="ghost" size="icon" type="submit"><LogOut className="h-4 w-4" /></Button>
         </form>
       </header>
-      <main className="flex-1 p-4 space-y-3 max-w-lg mx-auto w-full">
-        <h2 className="text-xl font-bold mt-2">Os meus eventos</h2>
+      <main className="flex-1 p-4 pt-6 pb-8 space-y-4 max-w-lg mx-auto w-full">
+        <h2 className="text-xl font-bold">Os meus eventos</h2>
         {eventRoles.map((r) => (
           <Link key={r.id} href={r.role === "ADMIN" ? `/e/${r.event.slug}/admin` : `/e/${r.event.slug}/jury`}>
             <Card className="hover:bg-accent/50 transition-colors cursor-pointer">
               <CardContent className="p-4 flex items-center gap-3">
-                <CalendarDays className="h-5 w-5 text-muted-foreground shrink-0" />
-                <div className="flex-1">
-                  <p className="font-medium">{r.event.name}</p>
-                  {r.station && <p className="text-xs text-muted-foreground">{r.station.name}</p>}
+                <CalendarDays className="h-8 w-8 text-muted-foreground shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold">{r.event.name}</p>
+                  {r.station && (
+                    <p className="text-xs text-muted-foreground mt-0.5">{r.station.name}</p>
+                  )}
                 </div>
-                <Badge variant={r.role === "ADMIN" ? "default" : "secondary"}>
+                <Badge variant={r.role === "ADMIN" ? "default" : "outline"} className="shrink-0">
                   {r.role === "ADMIN" ? "Admin" : "Júri"}
                 </Badge>
               </CardContent>
@@ -54,7 +56,10 @@ export default async function DashboardPage() {
           </Link>
         ))}
         {eventRoles.length === 0 && (
-          <p className="text-center py-12 text-muted-foreground text-sm">Não estás atribuído a nenhum evento.</p>
+          <div className="text-center py-16 text-muted-foreground">
+            <CalendarDays className="h-12 w-12 mx-auto mb-3 opacity-20" />
+            <p className="text-sm">Não estás atribuído a nenhum evento ativo.</p>
+          </div>
         )}
       </main>
     </div>
