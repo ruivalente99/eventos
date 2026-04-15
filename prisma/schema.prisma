@@ -1,0 +1,202 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ─── Auth.js required tables ───────────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── Core app models ────────────────────────────────────────────────────────
+
+model User {
+  id            String     @id @default(cuid())
+  name          String
+  email         String     @unique
+  emailVerified DateTime?
+  password      String?
+  globalRole    GlobalRole @default(USER)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  accounts    Account[]
+  sessions    Session[]
+  eventRoles  EventUser[]
+  evaluations Evaluation[]
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  logoUrl     String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users    EventUser[]
+  courses  EventCourse[]
+  stations Station[]
+  criteria EvaluationCriteria[]
+}
+
+model EventUser {
+  id        String    @id @default(cuid())
+  userId    String
+  eventId   String
+  role      EventRole
+  stationId String?
+  createdAt DateTime  @default(now())
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event   Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  station Station? @relation(fields: [stationId], references: [id])
+
+  @@unique([userId, eventId])
+}
+
+model GlobalCourse {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  eventCourses EventCourse[]
+}
+
+model EventCourse {
+  id             String   @id @default(cuid())
+  eventId        String
+  globalCourseId String?
+  name           String
+  entryOrder     Int
+  disqualified   Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  event        Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  globalCourse GlobalCourse? @relation(fields: [globalCourseId], references: [id])
+  evaluations  Evaluation[]
+
+  @@unique([eventId, entryOrder])
+  @@unique([eventId, name])
+}
+
+model Station {
+  id        String   @id @default(cuid())
+  eventId   String
+  name      String
+  weight    Float    @default(1.0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  event       Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  jurors      EventUser[]
+  evaluations Evaluation[]
+
+  @@unique([eventId, name])
+}
+
+model EvaluationCriteria {
+  id           String       @id @default(cuid())
+  eventId      String
+  name         String
+  code         String
+  weight       Float        @default(1.0)
+  minScore     Int          @default(0)
+  maxScore     Int          @default(100)
+  displayOrder Int          @default(0)
+  type         CriteriaType @default(CATEGORY)
+  active       Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  event  Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  scores EvaluationScore[]
+
+  @@unique([eventId, code])
+}
+
+model Evaluation {
+  id        String   @id @default(cuid())
+  eventId   String
+  courseId  String
+  stationId String
+  jurorId   String
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  course  EventCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  station Station     @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  juror   User        @relation(fields: [jurorId], references: [id], onDelete: Cascade)
+  scores  EvaluationScore[]
+
+  @@unique([courseId, stationId])
+}
+
+model EvaluationScore {
+  id           String @id @default(cuid())
+  evaluationId String
+  criteriaId   String
+  score        Float
+
+  evaluation Evaluation         @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  criteria   EvaluationCriteria @relation(fields: [criteriaId], references: [id], onDelete: Cascade)
+
+  @@unique([evaluationId, criteriaId])
+}
+
+enum GlobalRole {
+  SUPER_ADMIN
+  USER
+}
+
+enum EventRole {
+  ADMIN
+  JURY
+}
+
+enum CriteriaType {
+  CATEGORY
+  BONUS
+}
