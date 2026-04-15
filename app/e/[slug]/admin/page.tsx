@@ -20,11 +20,12 @@ export default async function EventAdminPage({ params }: { params: Promise<{ slu
   const totalEvals = await prisma.evaluation.count({ where: { eventId: event.id } });
   const totalPossible = event.courses.length * event.stations.length;
 
+  const base = `/e/${slug}/admin`;
   const stats = [
-    { label: "Júris/Admins", value: event._count.users, icon: Users, href: "jury" },
-    { label: "Cursos", value: event._count.courses, icon: BookOpen, href: "courses" },
-    { label: "Postos", value: event._count.stations, icon: MapPin, href: "stations" },
-    { label: "Avaliações", value: `${totalEvals}/${totalPossible}`, icon: ClipboardCheck, href: "leaderboard" },
+    { label: "Júris/Admins", value: event._count.users, icon: Users, href: `${base}/jury` },
+    { label: "Cursos", value: event._count.courses, icon: BookOpen, href: `${base}/courses` },
+    { label: "Postos", value: event._count.stations, icon: MapPin, href: `${base}/stations` },
+    { label: "Avaliações", value: `${totalEvals}/${totalPossible}`, icon: ClipboardCheck, href: `${base}/leaderboard` },
   ];
 
   return (

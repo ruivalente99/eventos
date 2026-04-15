@@ -11,6 +11,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (body.name !== undefined) data.name = body.name;
   if (body.entryOrder !== undefined) data.entryOrder = body.entryOrder;
   if (body.disqualified !== undefined) data.disqualified = body.disqualified;
+  if ("globalCourseId" in body) data.globalCourseId = body.globalCourseId; // allow null to disconnect
   const course = await prisma.eventCourse.update({ where: { id: courseId }, data });
   return NextResponse.json(course);
 }
