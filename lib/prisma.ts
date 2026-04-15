@@ -1,16 +1,18 @@
 import { PrismaClient } from "@/app/generated/prisma/client";
-import { PrismaLibSql } from "@prisma/adapter-libsql";
-import path from "path";
+import { PrismaPg } from "@prisma/adapter-pg";
 
 function createPrisma() {
-  const rawUrl = process.env.DATABASE_URL ?? "file:./prisma/dev.db";
-  // For relative file: URLs, resolve to absolute path for libsql
-  let url = rawUrl;
-  if (rawUrl.startsWith("file:./") || rawUrl.startsWith("file:../")) {
-    const absPath = path.resolve(process.cwd(), rawUrl.replace("file:", ""));
-    url = `file:${absPath}`;
+  const url = process.env.DATABASE_URL;
+
+  if (!url) {
+    throw new Error("DATABASE_URL is not set");
   }
-  const adapter = new PrismaLibSql({ url });
+
+  const adapter = new PrismaPg({
+    connectionString: url,
+  });
+
+
   return new PrismaClient({ adapter } as ConstructorParameters<typeof PrismaClient>[0]);
 }
 
