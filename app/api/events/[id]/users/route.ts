@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { generateLoginToken } from "@/lib/token";
 
 async function canManage(userId: string, globalRole: string, eventId: string) {
   if (globalRole === "SUPER_ADMIN") return true;
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const hashed = await bcrypt.hash(password, 12);
     const user = await prisma.user.upsert({
       where: { email },
-      create: { name, email, password: hashed },
+      create: { name, email, password: hashed, loginToken: generateLoginToken() },
       update: {},
     });
     userId = user.id;
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const eventUser = await prisma.eventUser.create({
     data: { userId, eventId, role, stationId: stationId || null },
-    include: { user: { select: { id: true, name: true, email: true } }, station: true },
+    include: { user: { select: { id: true, name: true, email: true, loginToken: true } }, station: true },
   });
   return NextResponse.json(eventUser, { status: 201 });
 }

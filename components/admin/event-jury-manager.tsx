@@ -8,11 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Trash2, User, UserCheck } from "lucide-react";
+import { Plus, QrCode, Trash2, User, UserCheck } from "lucide-react";
+import { QrDialog } from "@/components/admin/qr-dialog";
 
 interface EventUser {
   id: string; role: string;
-  user: { id: string; name: string; email: string };
+  user: { id: string; name: string; email: string; loginToken?: string | null };
   station: { id: string; name: string } | null;
 }
 interface Station { id: string; name: string }
@@ -28,6 +29,7 @@ export function EventJuryManager({
   const [tab, setTab] = useState<"new" | "existing">("existing");
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "JURY", stationId: "", existingUserId: "" });
   const [loading, setLoading] = useState(false);
+  const [qrUser, setQrUser] = useState<{ id: string; name: string } | null>(null);
 
   const notInEvent = allUsers.filter((u) => !users.some((eu) => eu.user.id === u.id));
 
@@ -49,6 +51,7 @@ export function EventJuryManager({
     setOpen(false);
     setForm({ name: "", email: "", password: "", role: "JURY", stationId: "", existingUserId: "" });
     toast({ title: "Utilizador adicionado ao evento!" });
+    if (tab === "new") setQrUser({ id: eu.user.id, name: eu.user.name });
   }
 
   async function removeUser(id: string) {
@@ -110,9 +113,14 @@ export function EventJuryManager({
                     </div>
                   )}
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => removeUser(eu.id)}>
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" onClick={() => setQrUser({ id: eu.user.id, name: eu.user.name })}>
+                    <QrCode className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => removeUser(eu.id)}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -181,6 +189,15 @@ export function EventJuryManager({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {qrUser && (
+        <QrDialog
+          userId={qrUser.id}
+          userName={qrUser.name}
+          open={!!qrUser}
+          onOpenChange={(open) => { if (!open) setQrUser(null); }}
+        />
+      )}
     </div>
   );
 }

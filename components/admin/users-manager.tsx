@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Trash2, User } from "lucide-react";
+import { Plus, QrCode, Trash2, User } from "lucide-react";
+import { QrDialog } from "@/components/admin/qr-dialog";
 
 interface UserRecord {
   id: string; name: string; email: string; globalRole: string; createdAt: Date;
@@ -20,6 +21,7 @@ export function UsersManager({ initialUsers }: { initialUsers: UserRecord[] }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", password: "", globalRole: "USER" });
   const [loading, setLoading] = useState(false);
+  const [qrUser, setQrUser] = useState<{ id: string; name: string } | null>(null);
 
   async function createUser() {
     setLoading(true);
@@ -35,6 +37,7 @@ export function UsersManager({ initialUsers }: { initialUsers: UserRecord[] }) {
     setOpen(false);
     setForm({ name: "", email: "", password: "", globalRole: "USER" });
     toast({ title: "Utilizador criado!" });
+    setQrUser({ id: user.id, name: user.name });
   }
 
   async function deleteUser(id: string) {
@@ -75,9 +78,14 @@ export function UsersManager({ initialUsers }: { initialUsers: UserRecord[] }) {
                   </div>
                 )}
               </div>
-              <Button variant="ghost" size="icon" onClick={() => deleteUser(user.id)}>
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" onClick={() => setQrUser({ id: user.id, name: user.name })}>
+                  <QrCode className="h-4 w-4 text-muted-foreground" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => deleteUser(user.id)}>
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -116,6 +124,15 @@ export function UsersManager({ initialUsers }: { initialUsers: UserRecord[] }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {qrUser && (
+        <QrDialog
+          userId={qrUser.id}
+          userName={qrUser.name}
+          open={!!qrUser}
+          onOpenChange={(open) => { if (!open) setQrUser(null); }}
+        />
+      )}
     </div>
   );
 }

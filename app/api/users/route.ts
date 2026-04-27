@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { generateLoginToken } from "@/lib/token";
 
 export async function GET() {
   const session = await auth();
@@ -21,8 +22,8 @@ export async function POST(req: NextRequest) {
   const { name, email, password, globalRole } = await req.json();
   const hashed = await bcrypt.hash(password, 12);
   const user = await prisma.user.create({
-    data: { name, email, password: hashed, globalRole: globalRole ?? "USER" },
-    select: { id: true, name: true, email: true, globalRole: true, createdAt: true },
+    data: { name, email, password: hashed, globalRole: globalRole ?? "USER", loginToken: generateLoginToken() },
+    select: { id: true, name: true, email: true, globalRole: true, createdAt: true, loginToken: true },
   });
   return NextResponse.json(user, { status: 201 });
 }
