@@ -9,6 +9,9 @@ export default async function EventCriteriaPage({ params }: { params: Promise<{ 
   const criteria = await prisma.evaluationCriteria.findMany({
     where: { eventId: event.id },
     orderBy: { displayOrder: "asc" },
+    include: {
+      children: { orderBy: { displayOrder: "asc" } },
+    },
   });
   return <CriteriaManager eventId={event.id} initialCriteria={criteria} />;
 }

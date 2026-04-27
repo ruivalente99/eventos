@@ -1,13 +1,15 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
 import { toast } from "@/hooks/use-toast";
 import { ChevronLeft, ChevronRight, Loader2, CheckCircle, MapPin } from "lucide-react";
+import { computeNormalizedScore } from "@/lib/scoring";
 
 interface Criterion {
   id: string;
@@ -17,6 +19,8 @@ interface Criterion {
   minScore: number;
   maxScore: number;
   type: string;
+  parentId: string | null;
+  children?: Criterion[];
 }
 interface Course { id: string; name: string; entryOrder: number }
 interface Station { id: string; name: string }
@@ -36,13 +40,21 @@ interface Props {
 
 export function EvaluationForm({
   event, course, station, criteria, existingScores,
-  onSaved, courses, currentIndex, onNavigate,
+  onSaved, onBack, courses, currentIndex, onNavigate,
 }: Props) {
-  const initialScores = criteria.reduce((acc, c) => {
+  // Only leaf criteria get direct scores
+  const leafCriteria = useMemo(() => [
+    ...criteria.filter((c) => c.parentId === null && (!c.children?.length)),
+    ...criteria.filter((c) => c.parentId !== null),
+  ], [criteria]);
+
+  const rootCriteria = useMemo(() => criteria.filter((c) => c.parentId === null), [criteria]);
+
+  const initialScores = useMemo(() => leafCriteria.reduce((acc, c) => {
     const existing = existingScores.find((s) => s.criteriaId === c.id);
     acc[c.id] = existing?.score ?? c.minScore;
     return acc;
-  }, {} as Record<string, number>);
+  }, {} as Record<string, number>), [leafCriteria, existingScores]);
 
   const [scores, setScores] = useState(initialScores);
   const [notes, setNotes] = useState("");
@@ -50,8 +62,21 @@ export function EvaluationForm({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(existingScores.length > 0);
 
+  const localScore = useMemo(
+    () => computeNormalizedScore(
+      Object.entries(scores).map(([criteriaId, score]) => ({ criteriaId, score })),
+      rootCriteria
+    ),
+    [scores, rootCriteria]
+  );
+
+  const totalLeafWeight = useMemo(
+    () => leafCriteria.reduce((s, c) => s + c.weight, 0),
+    [leafCriteria]
+  );
+
   function setScore(criteriaId: string, value: number) {
-    const c = criteria.find((x) => x.id === criteriaId)!;
+    const c = leafCriteria.find((x) => x.id === criteriaId)!;
     const clamped = Math.max(c.minScore, Math.min(c.maxScore, value));
     setScores((prev) => ({ ...prev, [criteriaId]: clamped }));
     setSaved(false);
@@ -83,6 +108,7 @@ export function EvaluationForm({
     setSaved(true);
     onSaved(evaluation);
     toast({ title: "Avaliação guardada!" });
+    onBack();
   }
 
   async function saveAndNavigate(direction: "prev" | "next") {
@@ -105,9 +131,8 @@ export function EvaluationForm({
     onNavigate(targetIndex);
   }
 
-  const categories = criteria.filter((c) => c.type === "CATEGORY");
-  const bonuses = criteria.filter((c) => c.type === "BONUS");
-  const totalWeight = criteria.reduce((s, c) => s + c.weight, 0);
+  const categoryRoots = rootCriteria.filter((c) => c.type === "CATEGORY");
+  const bonusRoots = rootCriteria.filter((c) => c.type === "BONUS");
 
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex < courses.length - 1;
@@ -160,43 +185,71 @@ export function EvaluationForm({
           </Card>
         )}
 
-        {categories.length > 0 && (
+        {categoryRoots.length > 0 && (
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm">Categorias</CardTitle>
             </CardHeader>
             <CardContent className="space-y-5">
-              {categories.map((c) => (
-                <ScoreInput
-                  key={c.id}
-                  criterion={c}
-                  totalWeight={totalWeight}
-                  value={scores[c.id] ?? c.minScore}
-                  onChange={(v) => setScore(c.id, v)}
-                />
-              ))}
+              {categoryRoots.map((root) =>
+                root.children && root.children.length > 0 ? (
+                  <CategoryGroup
+                    key={root.id}
+                    parent={root}
+                    scores={scores}
+                    onScore={setScore}
+                    totalLeafWeight={totalLeafWeight}
+                  />
+                ) : (
+                  <ScoreInput
+                    key={root.id}
+                    criterion={root}
+                    totalWeight={totalLeafWeight}
+                    value={scores[root.id] ?? root.minScore}
+                    onChange={(v) => setScore(root.id, v)}
+                  />
+                )
+              )}
             </CardContent>
           </Card>
         )}
 
-        {bonuses.length > 0 && (
+        {bonusRoots.length > 0 && (
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm">Bónus</CardTitle>
             </CardHeader>
             <CardContent className="space-y-5">
-              {bonuses.map((c) => (
-                <ScoreInput
-                  key={c.id}
-                  criterion={c}
-                  totalWeight={totalWeight}
-                  value={scores[c.id] ?? c.minScore}
-                  onChange={(v) => setScore(c.id, v)}
-                />
-              ))}
+              {bonusRoots.map((root) =>
+                root.children && root.children.length > 0 ? (
+                  <CategoryGroup
+                    key={root.id}
+                    parent={root}
+                    scores={scores}
+                    onScore={setScore}
+                    totalLeafWeight={totalLeafWeight}
+                  />
+                ) : (
+                  <ScoreInput
+                    key={root.id}
+                    criterion={root}
+                    totalWeight={totalLeafWeight}
+                    value={scores[root.id] ?? root.minScore}
+                    onChange={(v) => setScore(root.id, v)}
+                  />
+                )
+              )}
             </CardContent>
           </Card>
         )}
+
+        {/* Final score preview */}
+        <div className="p-4 bg-muted/50 rounded-lg text-center">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Nota Prévia</p>
+          <p className="text-3xl font-bold tabular-nums">
+            {localScore.toFixed(1)}<span className="text-lg font-normal text-muted-foreground">%</span>
+          </p>
+        </div>
 
         <div className="space-y-2">
           <Label>Notas (opcional)</Label>
@@ -222,6 +275,49 @@ export function EvaluationForm({
   );
 }
 
+function CategoryGroup({
+  parent,
+  scores,
+  onScore,
+  totalLeafWeight,
+}: {
+  parent: Criterion;
+  scores: Record<string, number>;
+  onScore: (id: string, v: number) => void;
+  totalLeafWeight: number;
+}) {
+  const children = parent.children ?? [];
+  const childWeightSum = children.reduce((s, c) => s + c.weight, 0);
+  const childScoreSum = children.reduce((s, c) => s + (scores[c.id] ?? c.minScore) * c.weight, 0);
+  const childMaxSum = children.reduce((s, c) => s + c.maxScore * c.weight, 0);
+  const groupPct = childMaxSum > 0 ? Math.round((childScoreSum / childMaxSum) * 100) : 0;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <Label className="font-semibold text-sm">{parent.name}</Label>
+        <div className="flex items-center gap-1.5">
+          <Badge variant="outline" className="text-xs px-1.5 py-0 h-4 border-primary/50 text-primary">
+            ×{parent.weight}
+          </Badge>
+          <span className="text-xs font-medium tabular-nums text-muted-foreground">{groupPct}%</span>
+        </div>
+      </div>
+      <div className="pl-3 border-l-2 border-border space-y-4">
+        {children.map((child) => (
+          <ScoreInput
+            key={child.id}
+            criterion={child}
+            totalWeight={childWeightSum}
+            value={scores[child.id] ?? child.minScore}
+            onChange={(v) => onScore(child.id, v)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ScoreInput({
   criterion,
   totalWeight,
@@ -236,8 +332,6 @@ function ScoreInput({
   const [inputValue, setInputValue] = useState(String(value));
   const [error, setError] = useState("");
 
-  const range = criterion.maxScore - criterion.minScore;
-  const pct = range > 0 ? ((value - criterion.minScore) / range) * 100 : 0;
   const contribution = totalWeight > 0 ? Math.round((criterion.weight / totalWeight) * 100) : 0;
   const isHighWeight = criterion.weight >= 1.5;
 
@@ -311,20 +405,15 @@ function ScoreInput({
         </div>
       </div>
       {error && <p className="text-xs text-destructive">{error}</p>}
-      <input
-        type="range"
+      <Slider
         min={criterion.minScore}
         max={criterion.maxScore}
-        value={value}
-        onChange={(e) => {
-          const v = parseInt(e.target.value);
+        step={1}
+        value={[value]}
+        onValueChange={([v]) => {
           onChange(v);
           setInputValue(String(v));
           setError("");
-        }}
-        className="w-full h-2 rounded-full appearance-none bg-secondary cursor-pointer"
-        style={{
-          background: `linear-gradient(to right, hsl(var(--primary)) ${pct}%, hsl(var(--secondary)) ${pct}%)`,
         }}
       />
       <div className="flex justify-between text-xs text-muted-foreground">

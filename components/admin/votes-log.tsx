@@ -1,9 +1,15 @@
 "use client";
 import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { useRouter } from "next/navigation";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { ChevronDown, ChevronRight, Search, User, BookOpen, MapPin } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { toast } from "@/hooks/use-toast";
+import { ChevronDown, ChevronRight, Search, User, BookOpen, MapPin, Trash2, Loader2 } from "lucide-react";
 
 interface Score {
   criteriaId: string;
@@ -21,9 +27,26 @@ interface Evaluation {
   scores: Score[];
 }
 
-export function VotesLog({ evaluations }: { evaluations: Evaluation[] }) {
+interface Props {
+  evaluations: Evaluation[];
+  eventId?: string;
+  jurors?: { id: string; name: string }[];
+  stations?: { id: string; name: string }[];
+  courses?: { id: string; name: string; entryOrder: number }[];
+}
+
+type ClearMode = "user" | "course" | "station" | "all" | null;
+
+export function VotesLog({ evaluations, eventId, jurors = [], stations = [], courses = [] }: Props) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  // Clear votes state
+  const [clearMode, setClearMode] = useState<ClearMode>(null);
+  const [clearTarget, setClearTarget] = useState("");
+  const [confirmText, setConfirmText] = useState("");
+  const [clearing, setClearing] = useState(false);
 
   function toggle(id: string) {
     setExpanded((prev) => {
@@ -48,8 +71,69 @@ export function VotesLog({ evaluations }: { evaluations: Evaluation[] }) {
     return maxSum > 0 ? ((sum / maxSum) * 100).toFixed(1) : "—";
   };
 
+  function openClearDialog(mode: ClearMode) {
+    setClearMode(mode);
+    setClearTarget("");
+    setConfirmText("");
+  }
+
+  async function executeClear() {
+    setClearing(true);
+    let url = `/api/events/${eventId}/evaluations`;
+    const params = new URLSearchParams();
+    if (clearMode === "user" && clearTarget) params.set("userId", clearTarget);
+    else if (clearMode === "course" && clearTarget) params.set("courseId", clearTarget);
+    else if (clearMode === "station" && clearTarget) params.set("stationId", clearTarget);
+    if ([...params].length) url += `?${params}`;
+
+    const res = await fetch(url, { method: "DELETE" });
+    setClearing(false);
+    if (!res.ok) { toast({ title: "Erro ao limpar votos", variant: "destructive" }); return; }
+    const { deleted } = await res.json();
+    toast({ title: `${deleted} avaliação${deleted !== 1 ? "ões" : ""} removida${deleted !== 1 ? "s" : ""}` });
+    setClearMode(null);
+    router.refresh();
+  }
+
+  const canExecuteClear =
+    clearMode === "all"
+      ? confirmText === "CONFIRMAR"
+      : !!clearTarget;
+
+  const clearLabel =
+    clearMode === "user" ? "por Júri" :
+    clearMode === "course" ? "por Curso" :
+    clearMode === "station" ? "por Posto" : "Tudo";
+
   return (
     <div className="space-y-4">
+      {/* Clear votes card — only shown when eventId is provided */}
+      {eventId && <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Trash2 className="h-4 w-4 text-destructive" />
+            Limpar Votos
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => openClearDialog("user")} disabled={jurors.length === 0}>
+              Por Júri
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => openClearDialog("course")} disabled={courses.length === 0}>
+              Por Curso
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => openClearDialog("station")} disabled={stations.length === 0}>
+              Por Posto
+            </Button>
+            <Button variant="destructive" size="sm" onClick={() => openClearDialog("all")}>
+              Tudo
+            </Button>
+          </div>
+        </CardContent>
+      </Card>}
+
+      {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
@@ -73,10 +157,7 @@ export function VotesLog({ evaluations }: { evaluations: Evaluation[] }) {
           const open = expanded.has(e.id);
           return (
             <Card key={e.id} className="overflow-hidden">
-              <button
-                className="w-full text-left"
-                onClick={() => toggle(e.id)}
-              >
+              <button className="w-full text-left" onClick={() => toggle(e.id)}>
                 <CardContent className="p-4">
                   <div className="flex items-start gap-3">
                     <div className="flex-1 min-w-0 space-y-1">
@@ -132,6 +213,87 @@ export function VotesLog({ evaluations }: { evaluations: Evaluation[] }) {
           );
         })}
       </div>
+
+      {/* Clear dialog */}
+      <Dialog open={clearMode !== null} onOpenChange={(v) => !v && setClearMode(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Limpar votos {clearLabel}</DialogTitle>
+            <DialogDescription>
+              {clearMode === "all"
+                ? "Esta ação remove TODAS as avaliações deste evento. Irreversível."
+                : `Seleciona o ${clearMode === "user" ? "júri" : clearMode === "course" ? "curso" : "posto"} cujas avaliações serão removidas.`}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            {clearMode === "user" && (
+              <div className="space-y-1.5">
+                <Label>Júri</Label>
+                <Select value={clearTarget} onValueChange={setClearTarget}>
+                  <SelectTrigger><SelectValue placeholder="Selecionar júri..." /></SelectTrigger>
+                  <SelectContent>
+                    {jurors.map((j) => (
+                      <SelectItem key={j.id} value={j.id}>{j.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {clearMode === "course" && (
+              <div className="space-y-1.5">
+                <Label>Curso</Label>
+                <Select value={clearTarget} onValueChange={setClearTarget}>
+                  <SelectTrigger><SelectValue placeholder="Selecionar curso..." /></SelectTrigger>
+                  <SelectContent>
+                    {courses.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>#{c.entryOrder} {c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {clearMode === "station" && (
+              <div className="space-y-1.5">
+                <Label>Posto</Label>
+                <Select value={clearTarget} onValueChange={setClearTarget}>
+                  <SelectTrigger><SelectValue placeholder="Selecionar posto..." /></SelectTrigger>
+                  <SelectContent>
+                    {stations.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {clearMode === "all" && (
+              <div className="space-y-1.5">
+                <Label>Escreve <strong>CONFIRMAR</strong> para continuar</Label>
+                <Input
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                  placeholder="CONFIRMAR"
+                />
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setClearMode(null)}>Cancelar</Button>
+            <Button
+              variant="destructive"
+              onClick={executeClear}
+              disabled={!canExecuteClear || clearing}
+            >
+              {clearing && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Limpar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

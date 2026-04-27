@@ -8,7 +8,7 @@ import { EvaluationForm } from "@/components/jury/evaluation-form";
 import { LogOut, CheckCircle, Circle, ChevronRight, MapPin } from "lucide-react";
 
 interface Course { id: string; name: string; entryOrder: number; disqualified: boolean }
-interface Criterion { id: string; name: string; code: string; weight: number; minScore: number; maxScore: number; type: string }
+interface Criterion { id: string; name: string; code: string; weight: number; minScore: number; maxScore: number; type: string; parentId: string | null; children?: Criterion[] }
 interface Evaluation { id: string; courseId: string; stationId: string; scores: { criteriaId: string; score: number }[] }
 interface Station { id: string; name: string }
 

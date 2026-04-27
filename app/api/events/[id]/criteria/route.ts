@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { revalidateTag } from "next/cache";
 
 async function canManage(userId: string, globalRole: string, eventId: string) {
   if (globalRole === "SUPER_ADMIN") return true;
@@ -15,6 +16,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const criteria = await prisma.evaluationCriteria.findMany({
     where: { eventId: id },
     orderBy: { displayOrder: "asc" },
+    include: {
+      children: {
+        where: { active: true },
+        orderBy: { displayOrder: "asc" },
+      },
+    },
   });
   return NextResponse.json(criteria);
 }
@@ -27,10 +34,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
-  const max = await prisma.evaluationCriteria.findFirst({ where: { eventId }, orderBy: { displayOrder: "desc" } });
+  const parentId = body.parentId ?? null;
+
+  const max = await prisma.evaluationCriteria.findFirst({
+    where: { eventId, parentId },
+    orderBy: { displayOrder: "desc" },
+  });
   const criterion = await prisma.evaluationCriteria.create({
     data: {
       eventId,
+      parentId,
       name: body.name,
       code: body.code,
       weight: body.weight ?? 1.0,
@@ -40,5 +53,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       type: body.type ?? "CATEGORY",
     },
   });
+
+  revalidateTag(`criteria:${eventId}`, {});
+  revalidateTag(`leaderboard:${eventId}`, {});
+
   return NextResponse.json(criterion, { status: 201 });
 }

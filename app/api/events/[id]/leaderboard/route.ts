@@ -1,25 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { unstable_cache } from "next/cache";
+import { computeNormalizedScore } from "@/lib/scoring";
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const { id: eventId } = await params;
-
-  const [courses, stations, evaluations] = await Promise.all([
-    prisma.eventCourse.findMany({ where: { eventId }, orderBy: { entryOrder: "asc" } }),
-    prisma.station.findMany({ where: { eventId, active: true } }),
-    prisma.evaluation.findMany({
-      where: { eventId },
-      include: {
-        scores: { include: { criteria: true } },
-        station: true,
-        juror: { select: { name: true } },
-      },
-    }),
-  ]);
-
+function buildLeaderboard(
+  courses: { id: string; name: string; entryOrder: number; disqualified: boolean }[],
+  stations: { id: string; name: string; weight: number }[],
+  evaluations: {
+    courseId: string;
+    stationId: string;
+    scores: { criteriaId: string; score: number }[];
+    station: { name: string; weight: number };
+    juror: { name: string };
+  }[],
+  rootCriteria: Parameters<typeof computeNormalizedScore>[1]
+) {
   const leaderboard = courses.map((course) => {
     const courseEvals = evaluations.filter((e) => e.courseId === course.id);
     let totalWeighted = 0;
@@ -28,11 +24,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     for (const station of stations) {
       const eval_ = courseEvals.find((e) => e.stationId === station.id);
       if (eval_) {
-        const raw = eval_.scores.reduce((sum, s) => sum + s.score * s.criteria.weight, 0);
-        const maxPossible = eval_.scores.reduce((sum, s) => sum + s.criteria.maxScore * s.criteria.weight, 0);
-        const normalized = maxPossible > 0 ? (raw / maxPossible) * 100 : 0;
+        const normalized = computeNormalizedScore(eval_.scores, rootCriteria);
         const weighted = normalized * station.weight;
-        stationBreakdown[station.name] = { score: Math.round(normalized * 100) / 100, weight: station.weight, juror: eval_.juror.name };
+        stationBreakdown[station.name] = {
+          score: Math.round(normalized * 100) / 100,
+          weight: station.weight,
+          juror: eval_.juror.name,
+        };
         totalWeighted += weighted;
       } else {
         stationBreakdown[station.name] = { score: 0, weight: station.weight, juror: "-" };
@@ -58,5 +56,41 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     return b.finalScore - a.finalScore;
   });
 
-  return NextResponse.json({ leaderboard, stations });
+  return leaderboard;
+}
+
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { id: eventId } = await params;
+
+  const getLeaderboard = unstable_cache(
+    async () => {
+      const [courses, stations, evaluations, allCriteria] = await Promise.all([
+        prisma.eventCourse.findMany({ where: { eventId }, orderBy: { entryOrder: "asc" } }),
+        prisma.station.findMany({ where: { eventId, active: true } }),
+        prisma.evaluation.findMany({
+          where: { eventId },
+          include: {
+            scores: true,
+            station: true,
+            juror: { select: { name: true } },
+          },
+        }),
+        prisma.evaluationCriteria.findMany({
+          where: { eventId, active: true },
+          include: { children: { where: { active: true } } },
+        }),
+      ]);
+
+      const rootCriteria = allCriteria.filter((c) => c.parentId === null);
+      const leaderboard = buildLeaderboard(courses, stations, evaluations, rootCriteria);
+      return { leaderboard, stations };
+    },
+    [`leaderboard-${eventId}`],
+    { tags: [`leaderboard:${eventId}`], revalidate: 60 }
+  );
+
+  const data = await getLeaderboard();
+  return NextResponse.json(data);
 }

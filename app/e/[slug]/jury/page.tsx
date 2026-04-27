@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
+import { unstable_cache } from "next/cache";
 import { JuryDashboard } from "@/components/jury/jury-dashboard";
 
 export default async function JuryPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -16,15 +17,38 @@ export default async function JuryPage({ params }: { params: Promise<{ slug: str
     include: { station: true },
   });
 
-  // Event admins go to admin jury management, not the voting interface
   if (eventUser?.role === "ADMIN") redirect(`/e/${slug}/admin/jury`);
-
-  // Must be a jury member or super admin to access voting
   if (!eventUser && session.user.globalRole !== "SUPER_ADMIN") redirect(`/e/${slug}`);
 
+  const getCriteria = unstable_cache(
+    () =>
+      prisma.evaluationCriteria.findMany({
+        where: { eventId: event.id, active: true },
+        orderBy: { displayOrder: "asc" },
+        include: {
+          children: {
+            where: { active: true },
+            orderBy: { displayOrder: "asc" },
+          },
+        },
+      }),
+    [`criteria-${event.id}`],
+    { tags: [`criteria:${event.id}`], revalidate: 300 }
+  );
+
+  const getCourses = unstable_cache(
+    () =>
+      prisma.eventCourse.findMany({
+        where: { eventId: event.id },
+        orderBy: { entryOrder: "asc" },
+      }),
+    [`courses-${event.id}`],
+    { tags: [`courses:${event.id}`], revalidate: 300 }
+  );
+
   const [courses, criteria, myEvaluations] = await Promise.all([
-    prisma.eventCourse.findMany({ where: { eventId: event.id }, orderBy: { entryOrder: "asc" } }),
-    prisma.evaluationCriteria.findMany({ where: { eventId: event.id, active: true }, orderBy: { displayOrder: "asc" } }),
+    getCourses(),
+    getCriteria(),
     prisma.evaluation.findMany({
       where: { eventId: event.id, jurorId: session.user.id },
       include: { scores: true },
