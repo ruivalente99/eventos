@@ -33,7 +33,7 @@ export default async function DashboardPage() {
           <p className="text-xs text-muted-foreground">{session.user.name}</p>
         </div>
         <div className="flex items-center gap-2">
-          <ThemeSwitcher />
+          <ThemeSwitcher userId={session.user.id} />
           <form action={async () => { "use server"; await signOut({ redirectTo: "/login" }); }}>
             <Button variant="ghost" size="icon" type="submit"><LogOut className="h-4 w-4" /></Button>
           </form>

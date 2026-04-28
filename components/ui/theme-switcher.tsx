@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
-import { useSession } from "next-auth/react";
 
 const THEMES = [
   { id: "light",        label: "Claro",          bg: "#ffffff", ring: "#d1d5db" },
@@ -9,9 +8,8 @@ const THEMES = [
   { id: "midnight-blue",label: "Azul Meia-Noite", bg: "#2e3a6e", ring: "#3b4db8" },
 ];
 
-export function ThemeSwitcher() {
+export function ThemeSwitcher({ userId }: { userId?: string }) {
   const { theme, setTheme } = useTheme();
-  const { data: session } = useSession();
   const [enabled, setEnabled] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -27,8 +25,8 @@ export function ThemeSwitcher() {
 
   async function handleTheme(t: string) {
     setTheme(t);
-    if (session?.user?.id) {
-      await fetch(`/api/users/${session.user.id}/theme`, {
+    if (userId) {
+      await fetch(`/api/users/${userId}/theme`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ theme: t }),
