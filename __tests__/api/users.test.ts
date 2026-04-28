@@ -1,27 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { superAdminSession, jurySession, noSession, GET, POST, parseJson } from "./helpers";
 
-const prismaInstance = vi.hoisted(() => ({
-  event: { findMany: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  eventUser: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  eventCourse: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  evaluationCriteria: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  evaluation: { findMany: vi.fn(), findFirst: vi.fn(), upsert: vi.fn(), count: vi.fn() },
-  evaluationScore: { deleteMany: vi.fn() },
-  station: { findMany: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  user: { findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  appSetting: { findMany: vi.fn(), upsert: vi.fn() },
-}));
-
+var prismaInstance: any;
+vi.mock("@/lib/prisma", () => {
+  prismaInstance = {
+    user: { findMany: vi.fn(), create: vi.fn() },
+  };
+  return { prisma: prismaInstance };
+});
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
-vi.mock("@/lib/prisma", () => ({ prisma: prismaInstance }));
 vi.mock("bcryptjs", () => ({ default: { hash: vi.fn().mockResolvedValue("hashed-pw") } }));
 vi.mock("@/lib/token", () => ({ generateLoginToken: vi.fn().mockReturnValue("abc".repeat(21) + "a") }));
 
 import { auth } from "@/lib/auth";
 import { GET as getUsers, POST as postUser } from "@/app/api/users/route";
 
-const mockAuth = vi.mocked(auth);
+const mockAuth = auth as any;
 
 const mockUser = {
   id: "u1", name: "Test User", email: "test@test.com",
@@ -77,9 +71,7 @@ describe("POST /api/users", () => {
   it("user gets loginToken on creation", async () => {
     mockAuth.mockResolvedValue(superAdminSession() as any);
     prismaInstance.user.create.mockResolvedValue(mockUser as any);
-    await postUser(
-      POST("http://localhost/api/users", { name: "U", email: "u@u.com", password: "pw" })
-    );
+    await postUser(POST("http://localhost/api/users", { name: "U", email: "u@u.com", password: "pw" }));
     const call = prismaInstance.user.create.mock.calls[0][0] as any;
     expect(call.data.loginToken).toBeDefined();
     expect(typeof call.data.loginToken).toBe("string");
@@ -88,9 +80,7 @@ describe("POST /api/users", () => {
   it("defaults globalRole to USER when not provided", async () => {
     mockAuth.mockResolvedValue(superAdminSession() as any);
     prismaInstance.user.create.mockResolvedValue(mockUser as any);
-    await postUser(
-      POST("http://localhost/api/users", { name: "U", email: "u@u.com", password: "pw" })
-    );
+    await postUser(POST("http://localhost/api/users", { name: "U", email: "u@u.com", password: "pw" }));
     const call = prismaInstance.user.create.mock.calls[0][0] as any;
     expect(call.data.globalRole).toBe("USER");
   });
@@ -108,7 +98,6 @@ describe("POST /api/users", () => {
   it("does not include password in response (select)", async () => {
     mockAuth.mockResolvedValue(superAdminSession() as any);
     prismaInstance.user.create.mockResolvedValue(mockUser as any);
-    const call_check = prismaInstance.user.create.mock;
     await postUser(POST("http://localhost/api/users", { name: "U", email: "u@u.com", password: "pw" }));
     const call = prismaInstance.user.create.mock.calls[0][0] as any;
     expect(call.select.password).toBeUndefined();

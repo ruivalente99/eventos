@@ -1,20 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { superAdminSession, jurySession, noSession, GET, POST, parseJson } from "./helpers";
 
-const prismaInstance = vi.hoisted(() => ({
-  event: { findMany: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  eventUser: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  eventCourse: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  evaluationCriteria: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  evaluation: { findMany: vi.fn(), findFirst: vi.fn(), upsert: vi.fn(), count: vi.fn() },
-  evaluationScore: { deleteMany: vi.fn() },
-  station: { findMany: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  user: { findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  appSetting: { findMany: vi.fn(), upsert: vi.fn() },
-}));
-
+var prismaInstance: any;
+vi.mock("@/lib/prisma", () => {
+  prismaInstance = {
+    eventUser: { findFirst: vi.fn() },
+    user: { findUnique: vi.fn(), update: vi.fn() },
+  };
+  return { prisma: prismaInstance };
+});
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
-vi.mock("@/lib/prisma", () => ({ prisma: prismaInstance }));
 vi.mock("@/lib/token", () => ({ generateLoginToken: vi.fn().mockReturnValue("new-token-xyz") }));
 vi.mock("qrcode", () => ({
   default: { toDataURL: vi.fn().mockResolvedValue("data:image/png;base64,MOCK") },
@@ -23,7 +18,7 @@ vi.mock("qrcode", () => ({
 import { auth } from "@/lib/auth";
 import { GET as getQr, POST as postQr } from "@/app/api/users/[id]/qr/route";
 
-const mockAuth = vi.mocked(auth);
+const mockAuth = auth as any;
 const params = (id = "u-1") => ({ params: Promise.resolve({ id }) });
 
 beforeEach(() => vi.clearAllMocks());

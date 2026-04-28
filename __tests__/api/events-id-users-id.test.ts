@@ -1,25 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { superAdminSession, jurySession, noSession, PATCH, DELETE, parseJson } from "./helpers";
 
-const prismaInstance = vi.hoisted(() => ({
-  event: { findMany: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  eventUser: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  eventCourse: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  evaluationCriteria: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  evaluation: { findMany: vi.fn(), findFirst: vi.fn(), upsert: vi.fn(), count: vi.fn() },
-  evaluationScore: { deleteMany: vi.fn() },
-  station: { findMany: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  user: { findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  appSetting: { findMany: vi.fn(), upsert: vi.fn() },
-}));
-
+var prismaInstance: any;
+vi.mock("@/lib/prisma", () => {
+  prismaInstance = {
+    eventUser: { update: vi.fn(), delete: vi.fn() },
+  };
+  return { prisma: prismaInstance };
+});
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
-vi.mock("@/lib/prisma", () => ({ prisma: prismaInstance }));
 
 import { auth } from "@/lib/auth";
 import { PATCH as patchUser, DELETE as deleteUser } from "@/app/api/events/[id]/users/[userId]/route";
 
-const mockAuth = vi.mocked(auth);
+const mockAuth = auth as any;
 const params = (id = "event-1", userId = "eu-1") => ({ params: Promise.resolve({ id, userId }) });
 
 const mockEventUser = {
@@ -47,7 +41,6 @@ describe("PATCH /api/events/[id]/users/[userId]", () => {
     expect(res.status).toBe(200);
     const call = prismaInstance.eventUser.update.mock.calls[0][0] as any;
     expect(call.data).toEqual({ emoji: "🤖" });
-    // stationId and role should NOT be in data (partial update fix)
     expect(call.data.stationId).toBeUndefined();
     expect(call.data.role).toBeUndefined();
   });

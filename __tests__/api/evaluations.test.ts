@@ -1,25 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { superAdminSession, jurySession, noSession, GET, POST, parseJson } from "./helpers";
 
-const prismaInstance = vi.hoisted(() => ({
-  event: { findMany: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  eventUser: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  eventCourse: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  evaluationCriteria: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  evaluation: { findMany: vi.fn(), findFirst: vi.fn(), upsert: vi.fn(), count: vi.fn() },
-  evaluationScore: { deleteMany: vi.fn() },
-  station: { findMany: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  user: { findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  appSetting: { findMany: vi.fn(), upsert: vi.fn() },
-}));
-
+var prismaInstance: any;
+vi.mock("@/lib/prisma", () => {
+  prismaInstance = {
+    eventUser: { findFirst: vi.fn() },
+    evaluation: { findMany: vi.fn(), upsert: vi.fn() },
+  };
+  return { prisma: prismaInstance };
+});
+vi.mock("next/cache", () => ({ revalidateTag: vi.fn(), unstable_cache: vi.fn((fn) => fn) }));
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
-vi.mock("@/lib/prisma", () => ({ prisma: prismaInstance }));
 
 import { auth } from "@/lib/auth";
 import { GET as getEvaluations, POST as postEvaluation } from "@/app/api/evaluations/route";
 
-const mockAuth = vi.mocked(auth);
+const mockAuth = auth as any;
 
 const mockEvaluation = {
   id: "eval-1",
@@ -47,9 +43,7 @@ describe("POST /api/evaluations", () => {
     prismaInstance.eventUser.findFirst.mockResolvedValue(null);
     const res = await postEvaluation(
       POST("http://localhost/api/evaluations", {
-        eventId: "event-1",
-        courseId: "course-1",
-        stationId: "station-1",
+        eventId: "event-1", courseId: "course-1", stationId: "station-1",
         scores: [{ criteriaId: "c1", score: 80 }],
       })
     );
@@ -64,9 +58,7 @@ describe("POST /api/evaluations", () => {
     prismaInstance.evaluation.upsert.mockResolvedValue(mockEvaluation as any);
     const res = await postEvaluation(
       POST("http://localhost/api/evaluations", {
-        eventId: "event-1",
-        courseId: "course-1",
-        stationId: "station-1",
+        eventId: "event-1", courseId: "course-1", stationId: "station-1",
         scores: [{ criteriaId: "c1", score: 80 }],
       })
     );
@@ -75,15 +67,13 @@ describe("POST /api/evaluations", () => {
     expect(data.id).toBe("eval-1");
   });
 
-  it("upserts (update) when evaluation already exists", async () => {
+  it("upserts when evaluation already exists", async () => {
     mockAuth.mockResolvedValue(jurySession() as any);
     prismaInstance.eventUser.findFirst.mockResolvedValue({ id: "eu-1" } as any);
     prismaInstance.evaluation.upsert.mockResolvedValue({ ...mockEvaluation, scores: [{ criteriaId: "c1", score: 90 }] } as any);
     const res = await postEvaluation(
       POST("http://localhost/api/evaluations", {
-        eventId: "event-1",
-        courseId: "course-1",
-        stationId: "station-1",
+        eventId: "event-1", courseId: "course-1", stationId: "station-1",
         scores: [{ criteriaId: "c1", score: 90 }],
       })
     );
@@ -117,7 +107,7 @@ describe("GET /api/evaluations", () => {
 
   it("jury can only see own evaluations (no admin role)", async () => {
     mockAuth.mockResolvedValue(jurySession() as any);
-    prismaInstance.eventUser.findFirst.mockResolvedValue(null); // not admin
+    prismaInstance.eventUser.findFirst.mockResolvedValue(null);
     prismaInstance.evaluation.findMany.mockResolvedValue([mockEvaluation] as any);
     await getEvaluations(GET("http://localhost/api/evaluations?eventId=event-1"));
     const call = prismaInstance.evaluation.findMany.mock.calls[0][0] as any;
@@ -144,7 +134,7 @@ describe("GET /api/evaluations", () => {
 
   it("event admin can see all evaluations for their event", async () => {
     mockAuth.mockResolvedValue(jurySession() as any);
-    prismaInstance.eventUser.findFirst.mockResolvedValue({ role: "ADMIN" } as any); // is admin
+    prismaInstance.eventUser.findFirst.mockResolvedValue({ role: "ADMIN" } as any);
     prismaInstance.evaluation.findMany.mockResolvedValue([mockEvaluation] as any);
     await getEvaluations(GET("http://localhost/api/evaluations?eventId=event-1"));
     const call = prismaInstance.evaluation.findMany.mock.calls[0][0] as any;

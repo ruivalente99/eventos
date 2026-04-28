@@ -1,25 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { superAdminSession, jurySession, noSession, GET, POST, parseJson } from "./helpers";
 
-const prismaInstance = vi.hoisted(() => ({
-  event: { findMany: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  eventUser: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  eventCourse: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  evaluationCriteria: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  evaluation: { findMany: vi.fn(), findFirst: vi.fn(), upsert: vi.fn(), count: vi.fn() },
-  evaluationScore: { deleteMany: vi.fn() },
-  station: { findMany: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  user: { findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  appSetting: { findMany: vi.fn(), upsert: vi.fn() },
-}));
-
+var prismaInstance: any;
+vi.mock("@/lib/prisma", () => {
+  prismaInstance = {
+    eventUser: { findFirst: vi.fn() },
+    eventCourse: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn() },
+  };
+  return { prisma: prismaInstance };
+});
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
-vi.mock("@/lib/prisma", () => ({ prisma: prismaInstance }));
 
 import { auth } from "@/lib/auth";
 import { GET as getCourses, POST as postCourse } from "@/app/api/events/[id]/courses/route";
 
-const mockAuth = vi.mocked(auth);
+const mockAuth = auth as any;
 const params = (id = "event-1") => ({ params: Promise.resolve({ id }) });
 
 const mockCourse = {
@@ -54,31 +49,22 @@ describe("GET /api/events/[id]/courses", () => {
 describe("POST /api/events/[id]/courses", () => {
   it("returns 401 when unauthenticated", async () => {
     mockAuth.mockResolvedValue(noSession() as any);
-    const res = await postCourse(
-      POST("http://localhost/api/events/event-1/courses", { name: "New" }),
-      params()
-    );
+    const res = await postCourse(POST("http://localhost/api/events/event-1/courses", { name: "New" }), params());
     expect(res.status).toBe(401);
   });
 
   it("returns 403 for non-admin", async () => {
     mockAuth.mockResolvedValue(jurySession() as any);
     prismaInstance.eventUser.findFirst.mockResolvedValue(null);
-    const res = await postCourse(
-      POST("http://localhost/api/events/event-1/courses", { name: "New" }),
-      params()
-    );
+    const res = await postCourse(POST("http://localhost/api/events/event-1/courses", { name: "New" }), params());
     expect(res.status).toBe(403);
   });
 
   it("SUPER_ADMIN creates course", async () => {
     mockAuth.mockResolvedValue(superAdminSession() as any);
-    prismaInstance.eventCourse.findMany.mockResolvedValue([]);
+    prismaInstance.eventCourse.findFirst.mockResolvedValue(null);
     prismaInstance.eventCourse.create.mockResolvedValue(mockCourse as any);
-    const res = await postCourse(
-      POST("http://localhost/api/events/event-1/courses", { name: "Course A" }),
-      params()
-    );
+    const res = await postCourse(POST("http://localhost/api/events/event-1/courses", { name: "Course A" }), params());
     expect(res.status).toBe(201);
     const data = await parseJson(res);
     expect(data.name).toBe("Course A");
@@ -88,10 +74,7 @@ describe("POST /api/events/[id]/courses", () => {
     mockAuth.mockResolvedValue(superAdminSession() as any);
     prismaInstance.eventCourse.findFirst.mockResolvedValue({ entryOrder: 3 } as any);
     prismaInstance.eventCourse.create.mockResolvedValue({ ...mockCourse, entryOrder: 4 } as any);
-    await postCourse(
-      POST("http://localhost/api/events/event-1/courses", { name: "New" }),
-      params()
-    );
+    await postCourse(POST("http://localhost/api/events/event-1/courses", { name: "New" }), params());
     const createCall = prismaInstance.eventCourse.create.mock.calls[0][0] as any;
     expect(createCall.data.entryOrder).toBe(4);
   });
@@ -100,10 +83,7 @@ describe("POST /api/events/[id]/courses", () => {
     mockAuth.mockResolvedValue(superAdminSession() as any);
     prismaInstance.eventCourse.findFirst.mockResolvedValue(null);
     prismaInstance.eventCourse.create.mockResolvedValue({ ...mockCourse, entryOrder: 1 } as any);
-    await postCourse(
-      POST("http://localhost/api/events/event-1/courses", { name: "First" }),
-      params()
-    );
+    await postCourse(POST("http://localhost/api/events/event-1/courses", { name: "First" }), params());
     const createCall = prismaInstance.eventCourse.create.mock.calls[0][0] as any;
     expect(createCall.data.entryOrder).toBe(1);
   });
@@ -111,10 +91,7 @@ describe("POST /api/events/[id]/courses", () => {
   it("respects explicitly provided entryOrder", async () => {
     mockAuth.mockResolvedValue(superAdminSession() as any);
     prismaInstance.eventCourse.create.mockResolvedValue({ ...mockCourse, entryOrder: 99 } as any);
-    await postCourse(
-      POST("http://localhost/api/events/event-1/courses", { name: "X", entryOrder: 99 }),
-      params()
-    );
+    await postCourse(POST("http://localhost/api/events/event-1/courses", { name: "X", entryOrder: 99 }), params());
     const createCall = prismaInstance.eventCourse.create.mock.calls[0][0] as any;
     expect(createCall.data.entryOrder).toBe(99);
   });

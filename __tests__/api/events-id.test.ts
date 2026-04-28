@@ -1,25 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { superAdminSession, jurySession, noSession, GET, PATCH, DELETE, parseJson } from "./helpers";
 
-const prismaInstance = vi.hoisted(() => ({
-  event: { findMany: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  eventUser: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  eventCourse: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  evaluationCriteria: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  evaluation: { findMany: vi.fn(), findFirst: vi.fn(), upsert: vi.fn(), count: vi.fn() },
-  evaluationScore: { deleteMany: vi.fn() },
-  station: { findMany: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  user: { findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  appSetting: { findMany: vi.fn(), upsert: vi.fn() },
-}));
-
+var prismaInstance: any;
+vi.mock("@/lib/prisma", () => {
+  prismaInstance = {
+    event: { update: vi.fn(), delete: vi.fn() },
+    eventUser: { findFirst: vi.fn() },
+  };
+  return { prisma: prismaInstance };
+});
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
-vi.mock("@/lib/prisma", () => ({ prisma: prismaInstance }));
 
 import { auth } from "@/lib/auth";
 import { PATCH as patchEvent, DELETE as deleteEvent } from "@/app/api/events/[id]/route";
 
-const mockAuth = vi.mocked(auth);
+const mockAuth = auth as any;
 const params = (id = "event-1") => ({ params: Promise.resolve({ id }) });
 
 beforeEach(() => vi.clearAllMocks());
@@ -33,7 +28,7 @@ describe("PATCH /api/events/[id]", () => {
 
   it("returns 403 when not event admin or SUPER_ADMIN", async () => {
     mockAuth.mockResolvedValue(jurySession() as any);
-    prismaInstance.eventUser.findFirst.mockResolvedValue(null); // no admin role
+    prismaInstance.eventUser.findFirst.mockResolvedValue(null);
     const res = await patchEvent(PATCH("http://localhost/api/events/event-1", { name: "New" }), params());
     expect(res.status).toBe(403);
   });

@@ -1,27 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { superAdminSession, jurySession, noSession, GET, POST, parseJson } from "./helpers";
 
-const prismaInstance = vi.hoisted(() => ({
-  event: { findMany: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  eventUser: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  eventCourse: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  evaluationCriteria: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  evaluation: { findMany: vi.fn(), findFirst: vi.fn(), upsert: vi.fn(), count: vi.fn() },
-  evaluationScore: { deleteMany: vi.fn() },
-  station: { findMany: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  user: { findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), upsert: vi.fn() },
-  appSetting: { findMany: vi.fn(), upsert: vi.fn() },
-}));
-
+var prismaInstance: any;
+vi.mock("@/lib/prisma", () => {
+  prismaInstance = {
+    eventUser: { findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn() },
+    user: { upsert: vi.fn() },
+  };
+  return { prisma: prismaInstance };
+});
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
-vi.mock("@/lib/prisma", () => ({ prisma: prismaInstance }));
 vi.mock("bcryptjs", () => ({ default: { hash: vi.fn().mockResolvedValue("hashed-pw") } }));
 vi.mock("@/lib/token", () => ({ generateLoginToken: vi.fn().mockReturnValue("tok-abc") }));
 
 import { auth } from "@/lib/auth";
 import { GET as getUsers, POST as postUser } from "@/app/api/events/[id]/users/route";
 
-const mockAuth = vi.mocked(auth);
+const mockAuth = auth as any;
 const params = (id = "event-1") => ({ params: Promise.resolve({ id }) });
 
 const mockEventUser = {
@@ -93,9 +88,7 @@ describe("POST /api/events/[id]/users", () => {
     prismaInstance.user.upsert.mockResolvedValue({ id: "u-new" } as any);
     prismaInstance.eventUser.create.mockResolvedValue(mockEventUser as any);
     const res = await postUser(
-      POST("http://localhost/api/events/event-1/users", {
-        name: "New", email: "new@test.com", password: "pw", role: "JURY",
-      }),
+      POST("http://localhost/api/events/event-1/users", { name: "New", email: "new@test.com", password: "pw", role: "JURY" }),
       params()
     );
     expect(res.status).toBe(201);
@@ -108,9 +101,7 @@ describe("POST /api/events/[id]/users", () => {
     prismaInstance.user.upsert.mockResolvedValue({ id: "u-new" } as any);
     prismaInstance.eventUser.create.mockResolvedValue(mockEventUser as any);
     await postUser(
-      POST("http://localhost/api/events/event-1/users", {
-        name: "New", email: "new@test.com", password: "pw", role: "JURY",
-      }),
+      POST("http://localhost/api/events/event-1/users", { name: "New", email: "new@test.com", password: "pw", role: "JURY" }),
       params()
     );
     const upsertCall = prismaInstance.user.upsert.mock.calls[0][0] as any;
@@ -122,9 +113,7 @@ describe("POST /api/events/[id]/users", () => {
     mockAuth.mockResolvedValue(superAdminSession() as any);
     prismaInstance.eventUser.create.mockResolvedValue(mockEventUser as any);
     await postUser(
-      POST("http://localhost/api/events/event-1/users", {
-        existingUserId: "u-existing", role: "ADMIN",
-      }),
+      POST("http://localhost/api/events/event-1/users", { existingUserId: "u-existing", role: "ADMIN" }),
       params()
     );
     expect(prismaInstance.user.upsert).not.toHaveBeenCalled();
@@ -137,9 +126,7 @@ describe("POST /api/events/[id]/users", () => {
     prismaInstance.user.upsert.mockResolvedValue({ id: "u-new" } as any);
     prismaInstance.eventUser.create.mockResolvedValue({ ...mockEventUser, stationId: "s-1" } as any);
     await postUser(
-      POST("http://localhost/api/events/event-1/users", {
-        name: "X", email: "x@x.com", password: "pw", role: "JURY", stationId: "s-1",
-      }),
+      POST("http://localhost/api/events/event-1/users", { name: "X", email: "x@x.com", password: "pw", role: "JURY", stationId: "s-1" }),
       params()
     );
     const createCall = prismaInstance.eventUser.create.mock.calls[0][0] as any;
@@ -151,9 +138,7 @@ describe("POST /api/events/[id]/users", () => {
     prismaInstance.user.upsert.mockResolvedValue({ id: "u-new" } as any);
     prismaInstance.eventUser.create.mockResolvedValue(mockEventUser as any);
     const res = await postUser(
-      POST("http://localhost/api/events/event-1/users", {
-        name: "New", email: "new@test.com", password: "pw", role: "JURY",
-      }),
+      POST("http://localhost/api/events/event-1/users", { name: "New", email: "new@test.com", password: "pw", role: "JURY" }),
       params()
     );
     const data = await parseJson(res);
