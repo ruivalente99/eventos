@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "@/hooks/use-toast";
-import { ChevronLeft, ChevronRight, Loader2, CheckCircle, MapPin } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, CheckCircle, MapPin, LayoutList } from "lucide-react";
 import { computeNormalizedScore } from "@/lib/scoring";
 
 interface Criterion {
@@ -142,6 +142,13 @@ export function EvaluationForm({
       {/* Course navigation header */}
       <header className="border-b bg-background sticky top-0 z-40">
         <div className="flex items-center gap-2 px-3 h-12 max-w-lg mx-auto w-full">
+          <Button
+            variant="ghost" size="icon" className="h-8 w-8 shrink-0"
+            onClick={onBack}
+            title="Voltar à lista"
+          >
+            <LayoutList className="h-4 w-4" />
+          </Button>
           <Button
             variant="ghost" size="icon" className="h-8 w-8 shrink-0"
             onClick={() => saveAndNavigate("prev")}

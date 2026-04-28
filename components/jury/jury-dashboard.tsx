@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { EvaluationForm } from "@/components/jury/evaluation-form";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { UserSettingsPopover } from "@/components/ui/user-settings-popover";
+import { computeNormalizedScore } from "@/lib/scoring";
 import { LogOut, CheckCircle, Circle, ChevronRight, MapPin } from "lucide-react";
 
 interface Course { id: string; name: string; entryOrder: number; disqualified: boolean }
@@ -139,6 +140,12 @@ export function JuryDashboard({ event, jurorId, jurorName, jurorEmoji: initialEm
 
         {courses.map((course, index) => {
           const done = isEvaluated(course.id);
+          const evaluation = done
+            ? evaluations.find((e) => e.courseId === course.id && (station ? e.stationId === station.id : true))
+            : null;
+          const score = evaluation
+            ? computeNormalizedScore(evaluation.scores, criteria)
+            : null;
           return (
             <button
               key={course.id}
@@ -153,7 +160,10 @@ export function JuryDashboard({ event, jurorId, jurorName, jurorEmoji: initialEm
                     <p className={`font-medium ${course.disqualified ? "line-through" : ""}`}>{course.name}</p>
                     {course.disqualified && <p className="text-xs text-destructive">Desclassificado</p>}
                   </div>
-                  <div className="shrink-0">
+                  <div className="shrink-0 flex items-center gap-2">
+                    {done && score !== null && (
+                      <span className="text-sm font-bold tabular-nums text-green-700">{score.toFixed(1)}%</span>
+                    )}
                     {done
                       ? <CheckCircle className="h-5 w-5 text-green-600" />
                       : course.disqualified
