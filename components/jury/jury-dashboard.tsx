@@ -6,8 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EvaluationForm } from "@/components/jury/evaluation-form";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { EmojiPicker } from "@/components/ui/emoji-picker";
-import { ThemeSwitcher } from "@/components/ui/theme-switcher";
+import { UserSettingsPopover } from "@/components/ui/user-settings-popover";
 import { LogOut, CheckCircle, Circle, ChevronRight, MapPin } from "lucide-react";
 
 interface Course { id: string; name: string; entryOrder: number; disqualified: boolean }
@@ -101,8 +100,12 @@ export function JuryDashboard({ event, jurorId, jurorName, jurorEmoji: initialEm
                 <MapPin className="h-3 w-3 mr-1" />{station.name}
               </Badge>
             )}
-            <EmojiPicker value={emoji ?? "👤"} onChange={updateEmoji} size="sm" />
-            <ThemeSwitcher userId={jurorId} />
+            <UserSettingsPopover
+              userId={jurorId}
+              userName={jurorName}
+              emoji={emoji}
+              onEmojiChange={updateEmoji}
+            />
             <Button variant="ghost" size="icon" onClick={() => signOut({ callbackUrl: `/e/${event.slug}` })}>
               <LogOut className="h-4 w-4" />
             </Button>

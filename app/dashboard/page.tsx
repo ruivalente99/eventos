@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ThemeSwitcher } from "@/components/ui/theme-switcher";
+import { UserSettingsPopover } from "@/components/ui/user-settings-popover";
 import { signOut } from "@/lib/auth";
 import { LogOut, CalendarDays } from "lucide-react";
 
@@ -33,7 +33,7 @@ export default async function DashboardPage() {
           <p className="text-xs text-muted-foreground">{session.user.name}</p>
         </div>
         <div className="flex items-center gap-2">
-          <ThemeSwitcher userId={session.user.id} />
+          <UserSettingsPopover userId={session.user.id} userName={session.user.name} showEmoji={false} />
           <form action={async () => { "use server"; await signOut({ redirectTo: "/login" }); }}>
             <Button variant="ghost" size="icon" type="submit"><LogOut className="h-4 w-4" /></Button>
           </form>
