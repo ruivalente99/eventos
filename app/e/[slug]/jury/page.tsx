@@ -14,7 +14,7 @@ export default async function JuryPage({ params }: { params: Promise<{ slug: str
 
   const eventUser = await prisma.eventUser.findFirst({
     where: { userId: session.user.id, eventId: event.id },
-    include: { station: true },
+    include: { station: true, user: { select: { id: true } } },
   });
 
   if (eventUser?.role === "ADMIN") redirect(`/e/${slug}/admin/jury`);
@@ -60,6 +60,8 @@ export default async function JuryPage({ params }: { params: Promise<{ slug: str
       event={{ id: event.id, name: event.name, slug: event.slug }}
       jurorId={session.user.id}
       jurorName={session.user.name}
+      jurorEmoji={eventUser?.emoji ?? null}
+      eventUserId={eventUser?.id ?? ""}
       station={eventUser?.station ?? null}
       courses={courses}
       criteria={criteria}

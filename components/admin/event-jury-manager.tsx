@@ -8,13 +8,17 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { Plus, QrCode, Trash2, User, UserCheck } from "lucide-react";
+import { Plus, QrCode, Trash2, UserCheck } from "lucide-react";
 import { QrDialog } from "@/components/admin/qr-dialog";
+import { EmojiPicker } from "@/components/ui/emoji-picker";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 interface EventUser {
   id: string; role: string;
+  emoji?: string | null;
   user: { id: string; name: string; email: string; loginToken?: string | null };
   station: { id: string; name: string } | null;
+  evaluationCount?: number;
 }
 interface Station { id: string; name: string }
 interface AllUser { id: string; name: string; email: string }
@@ -70,6 +74,18 @@ export function EventJuryManager({
     setUsers(users.map((u) => (u.id === id ? eu : u)));
   }
 
+  async function updateEmoji(id: string, emoji: string) {
+    const eu = users.find((u) => u.id === id);
+    if (!eu) return;
+    const res = await fetch(`/api/events/${eventId}/users/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stationId: eu.station?.id || null, role: eu.role, emoji }),
+    });
+    const updated = await res.json();
+    setUsers(users.map((u) => (u.id === id ? updated : u)));
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -85,13 +101,14 @@ export function EventJuryManager({
           <Card key={eu.id}>
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
-                <div className="mt-0.5">{eu.role === "ADMIN" ? <UserCheck className="h-4 w-4 text-primary" /> : <User className="h-4 w-4 text-muted-foreground" />}</div>
+                <UserAvatar name={eu.user.name} emoji={eu.emoji} size="md" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium">{eu.user.name}</span>
                     <Badge variant={eu.role === "ADMIN" ? "default" : "secondary"} className="text-xs">
                       {eu.role === "ADMIN" ? "Admin" : "Júri"}
                     </Badge>
+                    {eu.role === "ADMIN" && <UserCheck className="h-3.5 w-3.5 text-primary" />}
                   </div>
                   <p className="text-xs text-muted-foreground">{eu.user.email}</p>
                   {eu.role === "JURY" && (
@@ -114,6 +131,11 @@ export function EventJuryManager({
                   )}
                 </div>
                 <div className="flex items-center gap-1">
+                  <EmojiPicker
+                    value={eu.emoji ?? "👤"}
+                    onChange={(emoji) => updateEmoji(eu.id, emoji)}
+                    size="sm"
+                  />
                   <Button variant="ghost" size="icon" onClick={() => setQrUser({ id: eu.user.id, name: eu.user.name })}>
                     <QrCode className="h-4 w-4 text-muted-foreground" />
                   </Button>

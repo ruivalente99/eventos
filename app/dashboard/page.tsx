@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ThemeSwitcher } from "@/components/ui/theme-switcher";
 import { signOut } from "@/lib/auth";
 import { LogOut, CalendarDays } from "lucide-react";
 
@@ -31,9 +32,12 @@ export default async function DashboardPage() {
           <p className="font-semibold text-sm">Eventos CVUTAD</p>
           <p className="text-xs text-muted-foreground">{session.user.name}</p>
         </div>
-        <form action={async () => { "use server"; await signOut({ redirectTo: "/login" }); }}>
-          <Button variant="ghost" size="icon" type="submit"><LogOut className="h-4 w-4" /></Button>
-        </form>
+        <div className="flex items-center gap-2">
+          <ThemeSwitcher />
+          <form action={async () => { "use server"; await signOut({ redirectTo: "/login" }); }}>
+            <Button variant="ghost" size="icon" type="submit"><LogOut className="h-4 w-4" /></Button>
+          </form>
+        </div>
       </header>
       <main className="flex-1 p-4 pt-6 pb-8 space-y-4 max-w-lg mx-auto w-full">
         <h2 className="text-xl font-bold">Os meus eventos</h2>
@@ -41,7 +45,9 @@ export default async function DashboardPage() {
           <Link key={r.id} href={r.role === "ADMIN" ? `/e/${r.event.slug}/admin` : `/e/${r.event.slug}/jury`}>
             <Card className="hover:bg-accent/50 transition-colors cursor-pointer">
               <CardContent className="p-4 flex items-center gap-3">
-                <CalendarDays className="h-8 w-8 text-muted-foreground shrink-0" />
+                <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center shrink-0 text-xl">
+                  {r.event.emoji ?? <CalendarDays className="h-5 w-5 text-muted-foreground" />}
+                </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold">{r.event.name}</p>
                   {r.station && (

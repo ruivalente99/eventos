@@ -10,12 +10,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import { Plus, ExternalLink, Trash2, Settings, Users, BookOpen, MapPin, Loader2 } from "lucide-react";
+import { EmojiPicker } from "@/components/ui/emoji-picker";
 import { slugify } from "@/lib/utils";
 import Link from "next/link";
 
 interface EventWithCount {
   id: string; name: string; slug: string; description: string | null;
-  active: boolean; createdAt: Date;
+  emoji?: string | null; active: boolean; createdAt: Date;
   _count: { users: number; courses: number; stations: number };
 }
 
@@ -27,6 +28,15 @@ export function EventsManager({ initialEvents }: { initialEvents: EventWithCount
   const [form, setForm] = useState({ name: "", slug: "", description: "" });
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  async function updateEmoji(id: string, emoji: string) {
+    await fetch(`/api/events/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emoji }),
+    });
+    setEvents(events.map((e) => (e.id === id ? { ...e, emoji } : e)));
+  }
 
   async function createEvent() {
     setLoading(true);
@@ -85,6 +95,7 @@ export function EventsManager({ initialEvents }: { initialEvents: EventWithCount
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
+                    <EmojiPicker value={event.emoji ?? "📅"} onChange={(emoji) => updateEmoji(event.id, emoji)} size="sm" />
                     <h3 className="font-semibold">{event.name}</h3>
                     <Badge variant={event.active ? "success" : "secondary"}>
                       {event.active ? "Ativo" : "Inativo"}

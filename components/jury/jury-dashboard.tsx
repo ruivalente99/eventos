@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EvaluationForm } from "@/components/jury/evaluation-form";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { EmojiPicker } from "@/components/ui/emoji-picker";
+import { ThemeSwitcher } from "@/components/ui/theme-switcher";
 import { LogOut, CheckCircle, Circle, ChevronRight, MapPin } from "lucide-react";
 
 interface Course { id: string; name: string; entryOrder: number; disqualified: boolean }
@@ -16,14 +19,26 @@ interface Props {
   event: { id: string; name: string; slug: string };
   jurorId: string;
   jurorName: string;
+  jurorEmoji?: string | null;
+  eventUserId: string;
   station: Station | null;
   courses: Course[];
   criteria: Criterion[];
   initialEvaluations: Evaluation[];
 }
 
-export function JuryDashboard({ event, jurorName, station, courses, criteria, initialEvaluations }: Props) {
+export function JuryDashboard({ event, jurorName, jurorEmoji: initialEmoji, eventUserId, station, courses, criteria, initialEvaluations }: Props) {
   const [evaluations, setEvaluations] = useState(initialEvaluations);
+  const [emoji, setEmoji] = useState(initialEmoji ?? null);
+
+  async function updateEmoji(newEmoji: string) {
+    setEmoji(newEmoji);
+    await fetch(`/api/events/${event.id}/users/${eventUserId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emoji: newEmoji }),
+    });
+  }
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   const isEvaluated = (courseId: string) =>
@@ -73,16 +88,21 @@ export function JuryDashboard({ event, jurorName, station, courses, criteria, in
       {/* Header */}
       <header className="border-b bg-background sticky top-0 z-40">
         <div className="flex items-center justify-between px-4 h-14">
-          <div>
-            <p className="font-semibold text-sm leading-none">{event.name}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{jurorName}</p>
-          </div>
           <div className="flex items-center gap-2">
+            <UserAvatar name={jurorName} emoji={emoji} size="sm" />
+            <div>
+              <p className="font-semibold text-sm leading-none">{event.name}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{jurorName}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
             {station && (
               <Badge variant="outline" className="text-xs">
                 <MapPin className="h-3 w-3 mr-1" />{station.name}
               </Badge>
             )}
+            <EmojiPicker value={emoji ?? "👤"} onChange={updateEmoji} size="sm" />
+            <ThemeSwitcher />
             <Button variant="ghost" size="icon" onClick={() => signOut({ callbackUrl: `/e/${event.slug}` })}>
               <LogOut className="h-4 w-4" />
             </Button>

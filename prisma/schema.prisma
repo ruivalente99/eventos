@@ -54,6 +54,7 @@ model User {
   password      String?
   globalRole    GlobalRole @default(USER)
   loginToken    String?    @unique
+  theme         String?
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
@@ -69,6 +70,7 @@ model Event {
   slug        String   @unique
   description String?
   logoUrl     String?
+  emoji       String?  @default("📅")
   active      Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -85,6 +87,7 @@ model EventUser {
   eventId   String
   role      EventRole
   stationId String?
+  emoji     String?   @default("👤")
   createdAt DateTime  @default(now())
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -203,4 +206,9 @@ enum EventRole {
 enum CriteriaType {
   CATEGORY
   BONUS
+}
+
+model AppSetting {
+  key   String @id
+  value String
 }

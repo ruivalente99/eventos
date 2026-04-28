@@ -7,10 +7,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id: eventId, userId } = await params;
   const body = await req.json();
+  const data: Record<string, unknown> = { stationId: body.stationId ?? null, role: body.role };
+  if (body.emoji !== undefined) data.emoji = body.emoji;
   const eu = await prisma.eventUser.update({
     where: { id: userId },
-    data: { stationId: body.stationId ?? null, role: body.role },
-    include: { user: { select: { id: true, name: true, email: true } }, station: true },
+    data,
+    include: { user: { select: { id: true, name: true, email: true, loginToken: true } }, station: true },
   });
   return NextResponse.json(eu);
 }

@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { TopNav } from "@/components/shared/nav";
-import { LayoutDashboard, Users, BookOpen, CalendarDays, ClipboardList } from "lucide-react";
+import { Users, BookOpen, CalendarDays, ClipboardList, Settings } from "lucide-react";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -13,6 +13,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { label: "Cursos", href: "/admin/courses", icon: <BookOpen className="h-4 w-4" /> },
     { label: "Utilizadores", href: "/admin/users", icon: <Users className="h-4 w-4" /> },
     { label: "Logs", href: "/admin/logs", icon: <ClipboardList className="h-4 w-4" /> },
+    { label: "Definições", href: "/admin/settings", icon: <Settings className="h-4 w-4" /> },
   ];
 
   return (
