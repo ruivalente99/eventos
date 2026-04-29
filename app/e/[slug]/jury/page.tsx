@@ -9,13 +9,14 @@ export default async function JuryPage({ params }: { params: Promise<{ slug: str
   const session = await auth();
   if (!session?.user) redirect(`/e/${slug}`);
 
-  const event = await prisma.event.findUnique({ where: { slug }, select: { id: true, name: true, slug: true, allowDixit: true } as const });
+  const event = await prisma.event.findUnique({ where: { slug } });
   if (!event) notFound();
 
   const [eventUser, dbUser] = await Promise.all([
     prisma.eventUser.findFirst({
       where: { userId: session.user.id, eventId: event.id },
       include: { station: true, user: { select: { id: true } } },
+      // allowDixit + allowDado are scalar fields, included automatically
     }),
     prisma.user.findUnique({ where: { id: session.user.id }, select: { allowedThemes: true } }),
   ]);
@@ -60,12 +61,14 @@ export default async function JuryPage({ params }: { params: Promise<{ slug: str
 
   return (
     <JuryDashboard
-      event={{ id: event.id, name: event.name, slug: event.slug, allowDixit: event.allowDixit }}
+      event={{ id: event.id, name: event.name, slug: event.slug }}
       jurorId={session.user.id}
       jurorName={session.user.name}
       jurorEmoji={eventUser?.emoji ?? null}
       eventUserId={eventUser?.id ?? ""}
       allowedThemes={dbUser?.allowedThemes}
+      allowDixit={eventUser?.allowDixit ?? false}
+      allowDado={eventUser?.allowDado ?? false}
       station={eventUser?.station ?? null}
       courses={courses}
       criteria={criteria}

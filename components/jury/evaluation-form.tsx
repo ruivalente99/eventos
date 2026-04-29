@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,7 +26,7 @@ interface Course { id: string; name: string; entryOrder: number }
 interface Station { id: string; name: string }
 
 interface Props {
-  event: { id: string; name: string; slug: string; allowDixit: boolean };
+  event: { id: string; name: string; slug: string };
   course: Course;
   station: Station | null;
   criteria: Criterion[];
@@ -37,12 +37,13 @@ interface Props {
   currentIndex: number;
   onNavigate: (index: number) => void;
   allowDixit?: boolean;
+  allowDado?: boolean;
 }
 
 export function EvaluationForm({
   event, course, station, criteria, existingScores,
   onSaved, onBack, courses, currentIndex, onNavigate,
-  allowDixit,
+  allowDixit, allowDado,
 }: Props) {
   // Only leaf criteria get direct scores
   const leafCriteria = useMemo(() => [
@@ -64,6 +65,7 @@ export function EvaluationForm({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(existingScores.length > 0);
   const [dixitActive, setDixitActive] = useState(false);
+  const [dadoActive, setDadoActive] = useState(false);
 
   const localScore = useMemo(
     () => computeNormalizedScore(
@@ -146,6 +148,20 @@ export function EvaluationForm({
       setSaved(false);
       setDixitActive(false);
     }, 1400);
+  }
+
+  function activateDado() {
+    if (dadoActive || dixitActive) return;
+    setDadoActive(true);
+    setTimeout(() => {
+      const randomized = leafCriteria.reduce((acc, c) => {
+        acc[c.id] = Math.round(c.minScore + Math.random() * (c.maxScore - c.minScore));
+        return acc;
+      }, {} as Record<string, number>);
+      setScores(randomized);
+      setSaved(false);
+      setDadoActive(false);
+    }, 1600);
   }
 
   const categoryRoots = rootCriteria.filter((c) => c.type === "CATEGORY");
@@ -292,14 +308,24 @@ export function EvaluationForm({
           {allowDixit && (
             <Button
               variant="outline"
-              className="shrink-0 border-yellow-400 text-yellow-600 hover:bg-yellow-50 hover:text-yellow-700 font-bold gap-1"
+              className="shrink-0 border-yellow-400 text-yellow-600 hover:bg-yellow-50 hover:text-yellow-700 font-bold"
               onClick={activateDixit}
-              disabled={loading || dixitActive}
+              disabled={loading || dixitActive || dadoActive}
             >
-              🃏 DIXIT
+              🌟 DIXIT
             </Button>
           )}
-          <Button className="flex-1" onClick={submit} disabled={loading || !station || dixitActive}>
+          {allowDado && (
+            <Button
+              variant="outline"
+              className="shrink-0 border-blue-400 text-blue-600 hover:bg-blue-50 hover:text-blue-700 font-bold"
+              onClick={activateDado}
+              disabled={loading || dadoActive || dixitActive}
+            >
+              🎲 Dado
+            </Button>
+          )}
+          <Button className="flex-1" onClick={submit} disabled={loading || !station || dixitActive || dadoActive}>
             {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
             {saved ? "Atualizar Avaliação" : "Submeter Avaliação"}
           </Button>
@@ -309,22 +335,27 @@ export function EvaluationForm({
       {dixitActive && (
         <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center">
           <div className="dixit-overlay flex flex-col items-center gap-4">
-            <span className="text-8xl">🃏</span>
+            <span className="text-8xl">🌟</span>
             <span className="text-2xl font-black tracking-widest text-yellow-500 drop-shadow-lg">DIXIT!</span>
           </div>
           {["✨", "⭐", "🌟", "💫", "✨", "⭐"].map((e, i) => (
             <span
               key={i}
               className="dixit-float absolute text-3xl"
-              style={{
-                left: `${15 + i * 14}%`,
-                bottom: "30%",
-                animationDelay: `${i * 0.1}s`,
-              }}
+              style={{ left: `${15 + i * 14}%`, bottom: "30%", animationDelay: `${i * 0.1}s` }}
             >
               {e}
             </span>
           ))}
+        </div>
+      )}
+
+      {dadoActive && (
+        <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center">
+          <div className="dado-roll flex flex-col items-center gap-4">
+            <span className="text-8xl">🎲</span>
+            <span className="text-2xl font-black tracking-widest text-blue-500 drop-shadow-lg">A ROLAR...</span>
+          </div>
         </div>
       )}
     </div>
@@ -387,6 +418,11 @@ function ScoreInput({
 }) {
   const [inputValue, setInputValue] = useState(String(value));
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    setInputValue(String(value));
+    setError("");
+  }, [value]);
 
   const contribution = totalWeight > 0 ? Math.round((criterion.weight / totalWeight) * 100) : 0;
   const isHighWeight = criterion.weight >= 1.5;

@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { Plus, QrCode, Trash2, UserCheck } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { QrDialog } from "@/components/admin/qr-dialog";
 import { EmojiPicker } from "@/components/ui/emoji-picker";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -16,6 +17,8 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 interface EventUser {
   id: string; role: string;
   emoji?: string | null;
+  allowDixit?: boolean;
+  allowDado?: boolean;
   user: { id: string; name: string; email: string; loginToken?: string | null };
   station: { id: string; name: string } | null;
   evaluationCount?: number;
@@ -74,6 +77,18 @@ export function EventJuryManager({
     setUsers(users.map((u) => (u.id === id ? eu : u)));
   }
 
+  async function updateFlag(id: string, flag: "allowDixit" | "allowDado", value: boolean) {
+    const eu = users.find((u) => u.id === id);
+    if (!eu) return;
+    const res = await fetch(`/api/events/${eventId}/users/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [flag]: value }),
+    });
+    const updated = await res.json();
+    setUsers(users.map((u) => (u.id === id ? updated : u)));
+  }
+
   async function updateEmoji(id: string, emoji: string) {
     const eu = users.find((u) => u.id === id);
     if (!eu) return;
@@ -130,7 +145,23 @@ export function EventJuryManager({
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2">
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-xs text-muted-foreground leading-none">🌟</span>
+                    <Switch
+                      checked={eu.allowDixit ?? false}
+                      onCheckedChange={(v) => updateFlag(eu.id, "allowDixit", v)}
+                      title="Botão DIXIT"
+                    />
+                  </div>
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-xs text-muted-foreground leading-none">🎲</span>
+                    <Switch
+                      checked={eu.allowDado ?? false}
+                      onCheckedChange={(v) => updateFlag(eu.id, "allowDado", v)}
+                      title="Botão Dado"
+                    />
+                  </div>
                   <EmojiPicker
                     value={eu.emoji ?? "👤"}
                     onChange={(emoji) => updateEmoji(eu.id, emoji)}

@@ -73,7 +73,6 @@ model Event {
   logoUrl     String?
   emoji       String?  @default("📅")
   active      Boolean  @default(true)
-  allowDixit  Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -89,8 +88,10 @@ model EventUser {
   eventId   String
   role      EventRole
   stationId String?
-  emoji     String?   @default("👤")
-  createdAt DateTime  @default(now())
+  emoji      String?  @default("👤")
+  allowDixit Boolean  @default(false)
+  allowDado  Boolean  @default(false)
+  createdAt  DateTime @default(now())
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   event   Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)

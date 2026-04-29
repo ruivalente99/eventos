@@ -11,6 +11,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (body.stationId !== undefined) data.stationId = body.stationId ?? null;
   if (body.role !== undefined) data.role = body.role;
   if (body.emoji !== undefined) data.emoji = body.emoji;
+  if (body.allowDixit !== undefined) data.allowDixit = Boolean(body.allowDixit);
+  if (body.allowDado !== undefined) data.allowDado = Boolean(body.allowDado);
   const eu = await prisma.eventUser.update({
     where: { id: userId },
     data,

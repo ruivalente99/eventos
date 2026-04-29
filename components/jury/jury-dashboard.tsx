@@ -16,7 +16,7 @@ interface Evaluation { id: string; courseId: string; stationId: string; scores: 
 interface Station { id: string; name: string }
 
 interface Props {
-  event: { id: string; name: string; slug: string; allowDixit: boolean };
+  event: { id: string; name: string; slug: string };
   jurorId: string;
   jurorName: string;
   jurorEmoji?: string | null;
@@ -26,9 +26,11 @@ interface Props {
   criteria: Criterion[];
   initialEvaluations: Evaluation[];
   allowedThemes?: string[];
+  allowDixit: boolean;
+  allowDado: boolean;
 }
 
-export function JuryDashboard({ event, jurorId, jurorName, jurorEmoji: initialEmoji, eventUserId, station, courses, criteria, initialEvaluations, allowedThemes }: Props) {
+export function JuryDashboard({ event, jurorId, jurorName, jurorEmoji: initialEmoji, eventUserId, station, courses, criteria, initialEvaluations, allowedThemes, allowDixit, allowDado }: Props) {
   const [evaluations, setEvaluations] = useState(initialEvaluations);
   const [emoji, setEmoji] = useState(initialEmoji ?? null);
 
@@ -80,7 +82,8 @@ export function JuryDashboard({ event, jurorId, jurorName, jurorEmoji: initialEm
         courses={courses}
         currentIndex={selectedIndex}
         onNavigate={handleNavigate}
-        allowDixit={event.allowDixit}
+        allowDixit={allowDixit}
+        allowDado={allowDado}
       />
     );
   }
