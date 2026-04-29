@@ -14,10 +14,13 @@ export default async function DashboardPage() {
   if (!session?.user) redirect("/login");
   if (session.user.globalRole === "SUPER_ADMIN") redirect("/admin");
 
-  const eventRoles = await prisma.eventUser.findMany({
-    where: { userId: session.user.id, event: { active: true } },
-    include: { event: true, station: true },
-  });
+  const [eventRoles, dbUser] = await Promise.all([
+    prisma.eventUser.findMany({
+      where: { userId: session.user.id, event: { active: true } },
+      include: { event: true, station: true },
+    }),
+    prisma.user.findUnique({ where: { id: session.user.id }, select: { allowedThemes: true } }),
+  ]);
 
   if (eventRoles.length === 1) {
     const r = eventRoles[0];
@@ -33,7 +36,7 @@ export default async function DashboardPage() {
           <p className="text-xs text-muted-foreground">{session.user.name}</p>
         </div>
         <div className="flex items-center gap-2">
-          <UserSettingsPopover userId={session.user.id} userName={session.user.name} showEmoji={false} />
+          <UserSettingsPopover userId={session.user.id} userName={session.user.name} showEmoji={false} allowedThemes={dbUser?.allowedThemes} />
           <form action={async () => { "use server"; await signOut({ redirectTo: "/login" }); }}>
             <Button variant="ghost" size="icon" type="submit"><LogOut className="h-4 w-4" /></Button>
           </form>

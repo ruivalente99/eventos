@@ -25,9 +25,10 @@ interface Props {
   courses: Course[];
   criteria: Criterion[];
   initialEvaluations: Evaluation[];
+  allowedThemes?: string[];
 }
 
-export function JuryDashboard({ event, jurorId, jurorName, jurorEmoji: initialEmoji, eventUserId, station, courses, criteria, initialEvaluations }: Props) {
+export function JuryDashboard({ event, jurorId, jurorName, jurorEmoji: initialEmoji, eventUserId, station, courses, criteria, initialEvaluations, allowedThemes }: Props) {
   const [evaluations, setEvaluations] = useState(initialEvaluations);
   const [emoji, setEmoji] = useState(initialEmoji ?? null);
 
@@ -106,6 +107,7 @@ export function JuryDashboard({ event, jurorId, jurorName, jurorEmoji: initialEm
               userName={jurorName}
               emoji={emoji}
               onEmojiChange={updateEmoji}
+              allowedThemes={allowedThemes}
             />
             <Button variant="ghost" size="icon" onClick={() => signOut({ callbackUrl: `/e/${event.slug}` })}>
               <LogOut className="h-4 w-4" />

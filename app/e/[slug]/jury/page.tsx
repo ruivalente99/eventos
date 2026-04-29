@@ -12,10 +12,13 @@ export default async function JuryPage({ params }: { params: Promise<{ slug: str
   const event = await prisma.event.findUnique({ where: { slug } });
   if (!event) notFound();
 
-  const eventUser = await prisma.eventUser.findFirst({
-    where: { userId: session.user.id, eventId: event.id },
-    include: { station: true, user: { select: { id: true } } },
-  });
+  const [eventUser, dbUser] = await Promise.all([
+    prisma.eventUser.findFirst({
+      where: { userId: session.user.id, eventId: event.id },
+      include: { station: true, user: { select: { id: true } } },
+    }),
+    prisma.user.findUnique({ where: { id: session.user.id }, select: { allowedThemes: true } }),
+  ]);
 
   if (eventUser?.role === "ADMIN") redirect(`/e/${slug}/admin/jury`);
   if (!eventUser && session.user.globalRole !== "SUPER_ADMIN") redirect(`/e/${slug}`);
@@ -62,6 +65,7 @@ export default async function JuryPage({ params }: { params: Promise<{ slug: str
       jurorName={session.user.name}
       jurorEmoji={eventUser?.emoji ?? null}
       eventUserId={eventUser?.id ?? ""}
+      allowedThemes={dbUser?.allowedThemes}
       station={eventUser?.station ?? null}
       courses={courses}
       criteria={criteria}

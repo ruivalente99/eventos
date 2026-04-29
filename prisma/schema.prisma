@@ -55,6 +55,7 @@ model User {
   globalRole    GlobalRole @default(USER)
   loginToken    String?    @unique
   theme         String?
+  allowedThemes String[]   @default(["light", "dark", "midnight-blue"])
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 

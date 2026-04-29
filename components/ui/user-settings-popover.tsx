@@ -5,6 +5,7 @@ import { Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { ALL_THEMES } from "@/lib/themes";
 
 const EMOJIS: Record<string, string[]> = {
   "Caras":   ["😀","😎","🤓","🧐","😴","🤩","😊","🤔","😏","🥳","😤","🥸","🤯","😈","👾","🤖"],
@@ -13,26 +14,25 @@ const EMOJIS: Record<string, string[]> = {
   "Símbolos":["❤️","💙","💚","💛","🧡","💜","🖤","⭐","🌈","✨","💫","🔑","🎵","🌙","☀️","🌊"],
 };
 
-const THEMES = [
-  { id: "light",         label: "Claro",           color: "#ffffff", border: "#d1d5db", icon: "☀️" },
-  { id: "dark",          label: "Escuro",           color: "#1a1a1a", border: "#4b5563", icon: "🌙" },
-  { id: "midnight-blue", label: "Azul Meia-Noite",  color: "#2e3a6e", border: "#3b4db8", icon: "🌌" },
-];
-
 interface Props {
   userId?: string;
   userName: string;
   emoji?: string | null;
   onEmojiChange?: (emoji: string) => void;
   showEmoji?: boolean;
+  allowedThemes?: string[];
 }
 
-export function UserSettingsPopover({ userId, userName, emoji, onEmojiChange, showEmoji = true }: Props) {
+export function UserSettingsPopover({ userId, userName, emoji, onEmojiChange, showEmoji = true, allowedThemes }: Props) {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [themesEnabled, setThemesEnabled] = useState(false);
   const [tab, setTab] = useState("Caras");
   const [open, setOpen] = useState(false);
+
+  const visibleThemes = allowedThemes
+    ? ALL_THEMES.filter((t) => allowedThemes.includes(t.id))
+    : ALL_THEMES.filter((t) => !t.exclusive);
 
   useEffect(() => {
     setMounted(true);
@@ -112,7 +112,7 @@ export function UserSettingsPopover({ userId, userName, emoji, onEmojiChange, sh
           <div>
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Tema</p>
             <div className="grid grid-cols-3 gap-1.5">
-              {THEMES.map((t) => (
+              {visibleThemes.map((t) => (
                 <button
                   key={t.id}
                   onClick={() => handleTheme(t.id)}

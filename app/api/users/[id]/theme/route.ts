@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { ALL_THEMES } from "@/lib/themes";
 
-const ALLOWED_THEMES = ["light", "dark", "midnight-blue"];
+const ALLOWED_THEMES = ALL_THEMES.map((t) => t.id);
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
