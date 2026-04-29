@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { ALL_THEMES } from "@/lib/themes";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -25,7 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
-          themes={["light", "dark", "midnight-blue"]}
+          themes={ALL_THEMES.map((t) => t.id)}
           enableSystem={false}
           storageKey="eventos-theme"
         >

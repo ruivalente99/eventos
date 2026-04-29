@@ -355,31 +355,18 @@ export function EvaluationForm({
   );
 }
 
-// Dot grid: 3×3 cells, true = filled dot
-const FACE_DOTS: boolean[][] = [
-  [false, false, false,  false, true,  false,  false, false, false], // 1
-  [false, false, true,   false, false, false,  true,  false, false], // 2
-  [false, false, true,   false, true,  false,  true,  false, false], // 3
-  [true,  false, true,   false, false, false,  true,  false, true],  // 4
-  [true,  false, true,   false, true,  false,  true,  false, true],  // 5
-  [true,  false, true,   true,  false, true,   true,  false, true],  // 6
-];
-
 function DiceOverlay() {
+  const [face, setFace] = useState(() => Math.ceil(Math.random() * 6));
+
+  useEffect(() => {
+    const id = setInterval(() => setFace(Math.ceil(Math.random() * 6)), 80);
+    return () => clearInterval(id);
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center bg-black/25 backdrop-blur-sm">
-      <div className="dado-scene">
-        <div className="dado-cube">
-          {FACE_DOTS.map((dots, fi) => (
-            <div key={fi} className={`dado-face dado-face-${fi + 1}`}>
-              <div className="dado-dots">
-                {dots.map((filled, di) => (
-                  <div key={di} className={filled ? "dado-dot" : ""} />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+    <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center bg-black/20 backdrop-blur-sm">
+      <div className="w-24 h-24 bg-white rounded-2xl border-4 border-slate-200 shadow-2xl flex items-center justify-center text-6xl font-black text-slate-800 select-none tabular-nums">
+        {face}
       </div>
     </div>
   );
