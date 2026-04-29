@@ -33,7 +33,7 @@ export function EventJuryManager({
   const [tab, setTab] = useState<"new" | "existing">("existing");
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "JURY", stationId: "", existingUserId: "" });
   const [loading, setLoading] = useState(false);
-  const [qrUser, setQrUser] = useState<{ id: string; name: string } | null>(null);
+  const [qrUser, setQrUser] = useState<{ id: string; name: string; emoji?: string | null } | null>(null);
 
   const notInEvent = allUsers.filter((u) => !users.some((eu) => eu.user.id === u.id));
 
@@ -55,7 +55,7 @@ export function EventJuryManager({
     setOpen(false);
     setForm({ name: "", email: "", password: "", role: "JURY", stationId: "", existingUserId: "" });
     toast({ title: "Utilizador adicionado ao evento!" });
-    if (tab === "new") setQrUser({ id: eu.user.id, name: eu.user.name });
+    if (tab === "new") setQrUser({ id: eu.user.id, name: eu.user.name, emoji: eu.emoji });
   }
 
   async function removeUser(id: string) {
@@ -136,7 +136,7 @@ export function EventJuryManager({
                     onChange={(emoji) => updateEmoji(eu.id, emoji)}
                     size="sm"
                   />
-                  <Button variant="ghost" size="icon" onClick={() => setQrUser({ id: eu.user.id, name: eu.user.name })}>
+                  <Button variant="ghost" size="icon" onClick={() => setQrUser({ id: eu.user.id, name: eu.user.name, emoji: eu.emoji })}>
                     <QrCode className="h-4 w-4 text-muted-foreground" />
                   </Button>
                   <Button variant="ghost" size="icon" onClick={() => removeUser(eu.id)}>
@@ -216,6 +216,7 @@ export function EventJuryManager({
         <QrDialog
           userId={qrUser.id}
           userName={qrUser.name}
+          userEmoji={qrUser.emoji}
           open={!!qrUser}
           onOpenChange={(open) => { if (!open) setQrUser(null); }}
         />
