@@ -312,7 +312,7 @@ export function EvaluationForm({
               onClick={activateDixit}
               disabled={loading || dixitActive || dadoActive}
             >
-              🌟 DIXIT
+              🦖 DIXIT
             </Button>
           )}
           {allowDado && (
@@ -335,10 +335,10 @@ export function EvaluationForm({
       {dixitActive && (
         <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center">
           <div className="dixit-overlay flex flex-col items-center gap-4">
-            <span className="text-8xl">🌟</span>
+            <span className="text-8xl">🦖</span>
             <span className="text-2xl font-black tracking-widest text-yellow-500 drop-shadow-lg">DIXIT!</span>
           </div>
-          {["✨", "⭐", "🌟", "💫", "✨", "⭐"].map((e, i) => (
+          {["🦖", "⭐", "🦕", "💫", "🦖", "⭐"].map((e, i) => (
             <span
               key={i}
               className="dixit-float absolute text-3xl"
@@ -350,14 +350,37 @@ export function EvaluationForm({
         </div>
       )}
 
-      {dadoActive && (
-        <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center">
-          <div className="dado-roll flex flex-col items-center gap-4">
-            <span className="text-8xl">🎲</span>
-            <span className="text-2xl font-black tracking-widest text-blue-500 drop-shadow-lg">A ROLAR...</span>
-          </div>
+      {dadoActive && <DiceOverlay />}
+    </div>
+  );
+}
+
+// Dot grid: 3×3 cells, true = filled dot
+const FACE_DOTS: boolean[][] = [
+  [false, false, false,  false, true,  false,  false, false, false], // 1
+  [false, false, true,   false, false, false,  true,  false, false], // 2
+  [false, false, true,   false, true,  false,  true,  false, false], // 3
+  [true,  false, true,   false, false, false,  true,  false, true],  // 4
+  [true,  false, true,   false, true,  false,  true,  false, true],  // 5
+  [true,  false, true,   true,  false, true,   true,  false, true],  // 6
+];
+
+function DiceOverlay() {
+  return (
+    <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center bg-black/25 backdrop-blur-sm">
+      <div className="dado-scene">
+        <div className="dado-cube">
+          {FACE_DOTS.map((dots, fi) => (
+            <div key={fi} className={`dado-face dado-face-${fi + 1}`}>
+              <div className="dado-dots">
+                {dots.map((filled, di) => (
+                  <div key={di} className={filled ? "dado-dot" : ""} />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
-      )}
+      </div>
     </div>
   );
 }
