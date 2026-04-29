@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "@/hooks/use-toast";
-import { ChevronLeft, ChevronRight, Loader2, CheckCircle, MapPin, LayoutList } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, CheckCircle, MapPin, LayoutList, Sparkles } from "lucide-react";
 import { computeNormalizedScore } from "@/lib/scoring";
 
 interface Criterion {
@@ -26,7 +26,7 @@ interface Course { id: string; name: string; entryOrder: number }
 interface Station { id: string; name: string }
 
 interface Props {
-  event: { id: string; name: string; slug: string };
+  event: { id: string; name: string; slug: string; allowDixit: boolean };
   course: Course;
   station: Station | null;
   criteria: Criterion[];
@@ -36,11 +36,13 @@ interface Props {
   courses: Course[];
   currentIndex: number;
   onNavigate: (index: number) => void;
+  allowDixit?: boolean;
 }
 
 export function EvaluationForm({
   event, course, station, criteria, existingScores,
   onSaved, onBack, courses, currentIndex, onNavigate,
+  allowDixit,
 }: Props) {
   // Only leaf criteria get direct scores
   const leafCriteria = useMemo(() => [
@@ -61,6 +63,7 @@ export function EvaluationForm({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(existingScores.length > 0);
+  const [dixitActive, setDixitActive] = useState(false);
 
   const localScore = useMemo(
     () => computeNormalizedScore(
@@ -129,6 +132,20 @@ export function EvaluationForm({
       }
     }
     onNavigate(targetIndex);
+  }
+
+  function activateDixit() {
+    if (dixitActive) return;
+    setDixitActive(true);
+    setTimeout(() => {
+      const maxed = leafCriteria.reduce((acc, c) => {
+        acc[c.id] = c.maxScore;
+        return acc;
+      }, {} as Record<string, number>);
+      setScores(maxed);
+      setSaved(false);
+      setDixitActive(false);
+    }, 1400);
   }
 
   const categoryRoots = rootCriteria.filter((c) => c.type === "CATEGORY");
@@ -272,12 +289,44 @@ export function EvaluationForm({
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t">
         <div className="max-w-lg mx-auto flex items-center gap-3">
           {saved && <CheckCircle className="h-5 w-5 text-green-600 shrink-0" />}
-          <Button className="flex-1" onClick={submit} disabled={loading || !station}>
+          {allowDixit && (
+            <Button
+              variant="outline"
+              className="shrink-0 border-yellow-400 text-yellow-600 hover:bg-yellow-50 hover:text-yellow-700 font-bold gap-1"
+              onClick={activateDixit}
+              disabled={loading || dixitActive}
+            >
+              🃏 DIXIT
+            </Button>
+          )}
+          <Button className="flex-1" onClick={submit} disabled={loading || !station || dixitActive}>
             {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
             {saved ? "Atualizar Avaliação" : "Submeter Avaliação"}
           </Button>
         </div>
       </div>
+
+      {dixitActive && (
+        <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center">
+          <div className="dixit-overlay flex flex-col items-center gap-4">
+            <span className="text-8xl">🃏</span>
+            <span className="text-2xl font-black tracking-widest text-yellow-500 drop-shadow-lg">DIXIT!</span>
+          </div>
+          {["✨", "⭐", "🌟", "💫", "✨", "⭐"].map((e, i) => (
+            <span
+              key={i}
+              className="dixit-float absolute text-3xl"
+              style={{
+                left: `${15 + i * 14}%`,
+                bottom: "30%",
+                animationDelay: `${i * 0.1}s`,
+              }}
+            >
+              {e}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

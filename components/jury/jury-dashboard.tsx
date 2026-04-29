@@ -16,7 +16,7 @@ interface Evaluation { id: string; courseId: string; stationId: string; scores: 
 interface Station { id: string; name: string }
 
 interface Props {
-  event: { id: string; name: string; slug: string };
+  event: { id: string; name: string; slug: string; allowDixit: boolean };
   jurorId: string;
   jurorName: string;
   jurorEmoji?: string | null;
@@ -80,6 +80,7 @@ export function JuryDashboard({ event, jurorId, jurorName, jurorEmoji: initialEm
         courses={courses}
         currentIndex={selectedIndex}
         onNavigate={handleNavigate}
+        allowDixit={event.allowDixit}
       />
     );
   }

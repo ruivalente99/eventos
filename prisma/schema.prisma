@@ -73,6 +73,7 @@ model Event {
   logoUrl     String?
   emoji       String?  @default("📅")
   active      Boolean  @default(true)
+  allowDixit  Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

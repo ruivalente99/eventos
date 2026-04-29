@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, BookOpen, MapPin, ClipboardCheck } from "lucide-react";
 import Link from "next/link";
 import { EventActiveToggle } from "@/components/admin/event-active-toggle";
+import { EventDixitToggle } from "@/components/admin/event-dixit-toggle";
 
 export default async function EventAdminPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -53,6 +54,8 @@ export default async function EventAdminPage({ params }: { params: Promise<{ slu
           </Link>
         ))}
       </div>
+
+      <EventDixitToggle eventId={event.id} initialAllowDixit={event.allowDixit} />
 
       {totalPossible > 0 && (
         <Card>

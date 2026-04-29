@@ -9,7 +9,7 @@ export default async function JuryPage({ params }: { params: Promise<{ slug: str
   const session = await auth();
   if (!session?.user) redirect(`/e/${slug}`);
 
-  const event = await prisma.event.findUnique({ where: { slug } });
+  const event = await prisma.event.findUnique({ where: { slug }, select: { id: true, name: true, slug: true, allowDixit: true } as const });
   if (!event) notFound();
 
   const [eventUser, dbUser] = await Promise.all([
@@ -60,7 +60,7 @@ export default async function JuryPage({ params }: { params: Promise<{ slug: str
 
   return (
     <JuryDashboard
-      event={{ id: event.id, name: event.name, slug: event.slug }}
+      event={{ id: event.id, name: event.name, slug: event.slug, allowDixit: event.allowDixit }}
       jurorId={session.user.id}
       jurorName={session.user.name}
       jurorEmoji={eventUser?.emoji ?? null}

@@ -44,6 +44,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (body.active !== undefined) data.active = body.active;
   if (body.slug !== undefined) data.slug = slugify(body.slug);
   if (body.emoji !== undefined) data.emoji = body.emoji;
+  if (body.allowDixit !== undefined) data.allowDixit = Boolean(body.allowDixit);
 
   const event = await prisma.event.update({ where: { id }, data });
   return NextResponse.json(event);
