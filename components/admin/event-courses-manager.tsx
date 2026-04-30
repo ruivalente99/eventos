@@ -8,13 +8,14 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Trash2, AlertTriangle, Pencil, ChevronUp, ChevronDown, Loader2, CheckSquare, Square } from "lucide-react";
+import { Plus, Trash2, AlertTriangle, Pencil, ChevronUp, ChevronDown, Loader2, CheckSquare, Square, EyeOff, Eye } from "lucide-react";
 
 interface Course {
   id: string;
   name: string;
   entryOrder: number;
   disqualified: boolean;
+  hidden: boolean;
   globalCourseId?: string | null;
 }
 interface GlobalCourse { id: string; name: string }
@@ -100,6 +101,16 @@ export function EventCoursesManager({
     setCourses(courses.map((c) => (c.id === id ? { ...c, disqualified } : c)));
   }
 
+  async function toggleHidden(id: string, hidden: boolean) {
+    const res = await fetch(`/api/events/${eventId}/courses/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hidden }),
+    });
+    if (!res.ok) { toast({ title: "Erro ao atualizar", variant: "destructive" }); return; }
+    setCourses(courses.map((c) => (c.id === id ? { ...c, hidden } : c)));
+  }
+
   async function confirmDelete() {
     if (!deleteTarget) return;
     setDeleteLoading(true);
@@ -112,14 +123,15 @@ export function EventCoursesManager({
   }
 
   async function move(activeIndex: number, direction: "up" | "down") {
-    const activeList = courses.filter((c) => !c.disqualified);
-    const disqualifiedList = courses.filter((c) => c.disqualified);
+    const activeList = courses.filter((c) => !c.disqualified && !c.hidden);
+    const disqualifiedList = courses.filter((c) => c.disqualified && !c.hidden);
+    const hiddenList = courses.filter((c) => c.hidden);
     const targetIndex = direction === "up" ? activeIndex - 1 : activeIndex + 1;
     if (targetIndex < 0 || targetIndex >= activeList.length) return;
 
     const newActive = [...activeList];
     [newActive[activeIndex], newActive[targetIndex]] = [newActive[targetIndex], newActive[activeIndex]];
-    const combined = [...newActive, ...disqualifiedList];
+    const combined = [...newActive, ...disqualifiedList, ...hiddenList];
     setCourses(combined); // optimistic
 
     setReordering(true);
@@ -190,12 +202,20 @@ export function EventCoursesManager({
     setEditTarget(null);
   }
 
-  const activeCourses = courses.filter((c) => !c.disqualified);
-  const disqualifiedCourses = courses.filter((c) => c.disqualified);
+  const activeCourses = courses.filter((c) => !c.disqualified && !c.hidden);
+  const disqualifiedCourses = courses.filter((c) => c.disqualified && !c.hidden);
+  const hiddenCourses = courses.filter((c) => c.hidden);
 
-  function CourseRow({ course, index, isActive }: { course: Course; index: number; isActive: boolean }) {
+  function CourseRow({ course, index, section }: { course: Course; index: number; section: "active" | "dq" | "hidden" }) {
+    const isActive = section === "active";
+    const isHidden = section === "hidden";
+    const cardClass = isHidden
+      ? "border-muted bg-muted/30 opacity-70"
+      : !isActive
+      ? "border-destructive/25 bg-destructive/5 opacity-80"
+      : "";
     return (
-      <Card className={isActive ? "" : "border-destructive/25 bg-destructive/5 opacity-80"}>
+      <Card className={cardClass}>
         <CardContent className="p-3 flex items-center gap-2">
           {isActive ? (
             <div className="flex flex-col shrink-0">
@@ -237,11 +257,20 @@ export function EventCoursesManager({
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(course)}>
               <Pencil className="h-3.5 w-3.5" />
             </Button>
-            <div className="flex items-center gap-1" title={isActive ? "Desqualificar" : "Requalificar"}>
-              <AlertTriangle className={`h-3 w-3 ${!isActive ? "text-destructive" : "text-muted-foreground"}`} />
+            {!isHidden && (
+              <div className="flex items-center gap-1" title={isActive ? "Desqualificar" : "Requalificar"}>
+                <AlertTriangle className={`h-3 w-3 ${!isActive ? "text-destructive" : "text-muted-foreground"}`} />
+                <Switch
+                  checked={course.disqualified}
+                  onCheckedChange={(v) => toggleDisqualified(course.id, v)}
+                />
+              </div>
+            )}
+            <div className="flex items-center gap-1" title={isHidden ? "Mostrar" : "Ocultar"}>
+              {isHidden ? <Eye className="h-3 w-3 text-muted-foreground" /> : <EyeOff className="h-3 w-3 text-muted-foreground" />}
               <Switch
-                checked={course.disqualified}
-                onCheckedChange={(v) => toggleDisqualified(course.id, v)}
+                checked={course.hidden}
+                onCheckedChange={(v) => toggleHidden(course.id, v)}
               />
             </div>
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteTarget(course)}>
@@ -260,6 +289,7 @@ export function EventCoursesManager({
           <h2 className="text-xl font-bold">Cursos</h2>
           <p className="text-sm text-muted-foreground">{activeCourses.length} em votação · {courses.length} total</p>
         </div>
+
         <Button onClick={() => setOpen(true)} size="sm">
           <Plus className="h-4 w-4" /> Adicionar
         </Button>
@@ -268,7 +298,7 @@ export function EventCoursesManager({
       {/* Active courses */}
       <div className="space-y-2">
         {activeCourses.map((course, index) => (
-          <CourseRow key={course.id} course={course} index={index} isActive={true} />
+          <CourseRow key={course.id} course={course} index={index} section="active" />
         ))}
         {activeCourses.length === 0 && courses.length === 0 && (
           <p className="text-center py-8 text-muted-foreground text-sm">Nenhum curso adicionado.</p>
@@ -296,10 +326,33 @@ export function EventCoursesManager({
             </CardContent>
           </Card>
           {disqualifiedCourses.map((course) => (
-            <CourseRow key={course.id} course={course} index={-1} isActive={false} />
+            <CourseRow key={course.id} course={course} index={-1} section="dq" />
           ))}
         </div>
       )}
+      {/* Hidden section */}
+      {hiddenCourses.length > 0 && (
+        <div className="space-y-2 pt-2">
+          <div className="flex items-center gap-2">
+            <EyeOff className="h-4 w-4 text-muted-foreground shrink-0" />
+            <p className="text-sm font-semibold text-muted-foreground">
+              Ocultos ({hiddenCourses.length})
+            </p>
+            <div className="flex-1 h-px bg-muted" />
+          </div>
+          <Card className="border-muted bg-muted/20">
+            <CardContent className="p-3">
+              <p className="text-xs text-muted-foreground">
+                Estes cursos não aparecem aos júris nem nos resultados, mas ficam no registo.
+              </p>
+            </CardContent>
+          </Card>
+          {hiddenCourses.map((course) => (
+            <CourseRow key={course.id} course={course} index={-1} section="hidden" />
+          ))}
+        </div>
+      )}
+
       {/* Add course dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>

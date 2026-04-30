@@ -70,7 +70,7 @@ export default async function JuryPage({ params }: { params: Promise<{ slug: str
       allowDixit={eventUser?.allowDixit ?? false}
       allowDado={eventUser?.allowDado ?? false}
       station={eventUser?.station ?? null}
-      courses={courses}
+      courses={courses.filter((c) => !c.disqualified && !c.hidden)}
       criteria={criteria}
       initialEvaluations={myEvaluations}
     />

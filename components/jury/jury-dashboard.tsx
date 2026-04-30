@@ -10,7 +10,7 @@ import { UserSettingsPopover } from "@/components/ui/user-settings-popover";
 import { computeNormalizedScore } from "@/lib/scoring";
 import { LogOut, CheckCircle, Circle, ChevronRight, MapPin } from "lucide-react";
 
-interface Course { id: string; name: string; entryOrder: number; disqualified: boolean }
+interface Course { id: string; name: string; entryOrder: number }
 interface Criterion { id: string; name: string; code: string; weight: number; minScore: number; maxScore: number; type: string; parentId: string | null; children?: Criterion[] }
 interface Evaluation { id: string; courseId: string; stationId: string; scores: { criteriaId: string; score: number }[] }
 interface Station { id: string; name: string }
@@ -47,9 +47,8 @@ export function JuryDashboard({ event, jurorId, jurorName, jurorEmoji: initialEm
   const isEvaluated = (courseId: string) =>
     evaluations.some((e) => e.courseId === courseId && (station ? e.stationId === station.id : true));
 
-  const activeCourses = courses.filter((c) => !c.disqualified);
-  const evaluated = activeCourses.filter((c) => isEvaluated(c.id)).length;
-  const total = activeCourses.length;
+  const evaluated = courses.filter((c) => isEvaluated(c.id)).length;
+  const total = courses.length;
 
   function handleEvaluationSaved(evaluation: Evaluation) {
     setEvaluations((prev) => {
@@ -155,16 +154,14 @@ export function JuryDashboard({ event, jurorId, jurorName, jurorEmoji: initialEm
           return (
             <button
               key={course.id}
-              onClick={() => !course.disqualified && setSelectedIndex(index)}
-              disabled={course.disqualified}
-              className="w-full text-left"
+              onClick={() => setSelectedIndex(index)}
+              className="w-full text-left cursor-pointer"
             >
-              <Card className={`transition-colors ${done ? "border-green-200 bg-green-50/50" : "hover:bg-accent/50"} ${course.disqualified ? "opacity-50" : "cursor-pointer"}`}>
+              <Card className={`transition-colors ${done ? "border-green-200 bg-green-50/50" : "hover:bg-accent/50"}`}>
                 <CardContent className="p-4 flex items-center gap-3">
                   <span className="text-sm font-mono text-muted-foreground w-6 text-center shrink-0">{course.entryOrder}</span>
                   <div className="flex-1 min-w-0">
-                    <p className={`font-medium ${course.disqualified ? "line-through" : ""}`}>{course.name}</p>
-                    {course.disqualified && <p className="text-xs text-destructive">Desclassificado</p>}
+                    <p className="font-medium">{course.name}</p>
                   </div>
                   <div className="shrink-0 flex items-center gap-2">
                     {done && score !== null && (
@@ -172,9 +169,7 @@ export function JuryDashboard({ event, jurorId, jurorName, jurorEmoji: initialEm
                     )}
                     {done
                       ? <CheckCircle className="h-5 w-5 text-green-600" />
-                      : course.disqualified
-                        ? null
-                        : <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                      : <ChevronRight className="h-5 w-5 text-muted-foreground" />
                     }
                   </div>
                 </CardContent>

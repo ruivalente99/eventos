@@ -67,7 +67,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const getLeaderboard = unstable_cache(
     async () => {
       const [courses, stations, evaluations, allCriteria] = await Promise.all([
-        prisma.eventCourse.findMany({ where: { eventId }, orderBy: { entryOrder: "asc" } }),
+        prisma.eventCourse.findMany({ where: { eventId, hidden: false }, orderBy: { entryOrder: "asc" } }),
         prisma.station.findMany({ where: { eventId, active: true } }),
         prisma.evaluation.findMany({
           where: { eventId },
