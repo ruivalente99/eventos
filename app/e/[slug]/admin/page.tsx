@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, BookOpen, MapPin, ClipboardCheck } from "lucide-react";
 import Link from "next/link";
 import { EventActiveToggle } from "@/components/admin/event-active-toggle";
+import { AdminLivePanel } from "@/components/admin/admin-live-panel";
 
 export default async function EventAdminPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -72,6 +73,8 @@ export default async function EventAdminPage({ params }: { params: Promise<{ slu
           </CardContent>
         </Card>
       )}
+
+      <AdminLivePanel eventId={event.id} />
     </div>
   );
 }

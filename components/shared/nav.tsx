@@ -14,9 +14,10 @@ interface NavProps {
   subtitle?: string;
   backHref?: string;
   backLabel?: string;
+  settingsNode?: React.ReactNode;
 }
 
-export function TopNav({ items, title, subtitle, backHref, backLabel }: NavProps) {
+export function TopNav({ items, title, subtitle, backHref, backLabel, settingsNode }: NavProps) {
   const pathname = usePathname();
   return (
     <header className="border-b bg-background sticky top-0 z-40">
@@ -35,9 +36,12 @@ export function TopNav({ items, title, subtitle, backHref, backLabel }: NavProps
             {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
           </div>
         </div>
-        <Button variant="ghost" size="icon" onClick={() => signOut({ callbackUrl: "/login" })}>
-          <LogOut className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          {settingsNode}
+          <Button variant="ghost" size="icon" onClick={() => signOut({ callbackUrl: "/login" })}>
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
       <nav className="flex overflow-x-auto border-t">
         {items.map((item) => (

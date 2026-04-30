@@ -2,6 +2,8 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { TopNav } from "@/components/shared/nav";
 import { Users, BookOpen, CalendarDays, ClipboardList, Settings } from "lucide-react";
+import { UserSettingsPopover } from "@/components/ui/user-settings-popover";
+import { ALL_THEMES } from "@/lib/themes";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -18,7 +20,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="min-h-screen flex flex-col">
-      <TopNav items={navItems} title="Eventos CVUTAD" subtitle="Super Admin" />
+      <TopNav
+        items={navItems}
+        title="Eventos CVUTAD"
+        subtitle="Super Admin"
+        settingsNode={
+          <UserSettingsPopover
+            userId={session.user.id}
+            userName={session.user.name ?? ""}
+            showEmoji={false}
+            allowedThemes={ALL_THEMES.map((t) => t.id)}
+          />
+        }
+      />
       <main className="flex-1 p-4 max-w-4xl mx-auto w-full pb-8">{children}</main>
     </div>
   );
