@@ -111,19 +111,22 @@ export function EventCoursesManager({
     toast({ title: "Curso removido" });
   }
 
-  async function move(index: number, direction: "up" | "down") {
-    const targetIndex = direction === "up" ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= courses.length) return;
+  async function move(activeIndex: number, direction: "up" | "down") {
+    const activeList = courses.filter((c) => !c.disqualified);
+    const disqualifiedList = courses.filter((c) => c.disqualified);
+    const targetIndex = direction === "up" ? activeIndex - 1 : activeIndex + 1;
+    if (targetIndex < 0 || targetIndex >= activeList.length) return;
 
-    const newOrder = [...courses];
-    [newOrder[index], newOrder[targetIndex]] = [newOrder[targetIndex], newOrder[index]];
-    setCourses(newOrder); // optimistic
+    const newActive = [...activeList];
+    [newActive[activeIndex], newActive[targetIndex]] = [newActive[targetIndex], newActive[activeIndex]];
+    const combined = [...newActive, ...disqualifiedList];
+    setCourses(combined); // optimistic
 
     setReordering(true);
     const res = await fetch(`/api/events/${eventId}/courses/reorder`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids: newOrder.map((c) => c.id) }),
+      body: JSON.stringify({ ids: combined.map((c) => c.id) }),
     });
     setReordering(false);
     if (!res.ok) {
@@ -187,79 +190,116 @@ export function EventCoursesManager({
     setEditTarget(null);
   }
 
+  const activeCourses = courses.filter((c) => !c.disqualified);
+  const disqualifiedCourses = courses.filter((c) => c.disqualified);
+
+  function CourseRow({ course, index, isActive }: { course: Course; index: number; isActive: boolean }) {
+    return (
+      <Card className={isActive ? "" : "border-destructive/25 bg-destructive/5 opacity-80"}>
+        <CardContent className="p-3 flex items-center gap-2">
+          {isActive ? (
+            <div className="flex flex-col shrink-0">
+              <button
+                onClick={() => move(index, "up")}
+                disabled={index === 0 || reordering}
+                className="h-5 w-5 flex items-center justify-center rounded hover:bg-muted disabled:opacity-20"
+              >
+                <ChevronUp className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => move(index, "down")}
+                disabled={index === activeCourses.length - 1 || reordering}
+                className="h-5 w-5 flex items-center justify-center rounded hover:bg-muted disabled:opacity-20"
+              >
+                <ChevronDown className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ) : (
+            <div className="w-5 shrink-0" />
+          )}
+
+          <span className="text-sm font-mono text-muted-foreground w-5 text-center shrink-0">
+            {course.entryOrder}
+          </span>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={`font-medium text-sm ${!isActive ? "line-through text-muted-foreground" : ""}`}>
+                {course.name}
+              </span>
+              {course.globalCourseId && (
+                <Badge variant="outline" className="text-xs px-1.5 py-0 h-4">global</Badge>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(course)}>
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+            <div className="flex items-center gap-1" title={isActive ? "Desqualificar" : "Requalificar"}>
+              <AlertTriangle className={`h-3 w-3 ${!isActive ? "text-destructive" : "text-muted-foreground"}`} />
+              <Switch
+                checked={course.disqualified}
+                onCheckedChange={(v) => toggleDisqualified(course.id, v)}
+              />
+            </div>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteTarget(course)}>
+              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold">Cursos</h2>
-          <p className="text-sm text-muted-foreground">{courses.length} cursos</p>
+          <p className="text-sm text-muted-foreground">{activeCourses.length} em votação · {courses.length} total</p>
         </div>
         <Button onClick={() => setOpen(true)} size="sm">
           <Plus className="h-4 w-4" /> Adicionar
         </Button>
       </div>
 
+      {/* Active courses */}
       <div className="space-y-2">
-        {courses.map((course, index) => (
-          <Card key={course.id}>
-            <CardContent className="p-3 flex items-center gap-2">
-              {/* Order arrows */}
-              <div className="flex flex-col shrink-0">
-                <button
-                  onClick={() => move(index, "up")}
-                  disabled={index === 0 || reordering}
-                  className="h-5 w-5 flex items-center justify-center rounded hover:bg-muted disabled:opacity-20"
-                >
-                  <ChevronUp className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  onClick={() => move(index, "down")}
-                  disabled={index === courses.length - 1 || reordering}
-                  className="h-5 w-5 flex items-center justify-center rounded hover:bg-muted disabled:opacity-20"
-                >
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </button>
-              </div>
-
-              <span className="text-sm font-mono text-muted-foreground w-5 text-center shrink-0">
-                {course.entryOrder}
-              </span>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`font-medium text-sm ${course.disqualified ? "line-through text-muted-foreground" : ""}`}>
-                    {course.name}
-                  </span>
-                  {course.disqualified && <Badge variant="destructive" className="text-xs">DQ</Badge>}
-                  {course.globalCourseId && (
-                    <Badge variant="outline" className="text-xs px-1.5 py-0 h-4">global</Badge>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-1.5 shrink-0">
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(course)}>
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <div className="flex items-center gap-1">
-                  <AlertTriangle className="h-3 w-3 text-muted-foreground" />
-                  <Switch
-                    checked={course.disqualified}
-                    onCheckedChange={(v) => toggleDisqualified(course.id, v)}
-                  />
-                </div>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteTarget(course)}>
-                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        {activeCourses.map((course, index) => (
+          <CourseRow key={course.id} course={course} index={index} isActive={true} />
         ))}
-        {courses.length === 0 && (
+        {activeCourses.length === 0 && courses.length === 0 && (
           <p className="text-center py-8 text-muted-foreground text-sm">Nenhum curso adicionado.</p>
+        )}
+        {activeCourses.length === 0 && courses.length > 0 && (
+          <p className="text-center py-4 text-muted-foreground text-sm">Todos os cursos estão desqualificados.</p>
         )}
       </div>
 
+      {/* Disqualified section */}
+      {disqualifiedCourses.length > 0 && (
+        <div className="space-y-2 pt-2">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+            <p className="text-sm font-semibold text-destructive">
+              Desqualificados ({disqualifiedCourses.length})
+            </p>
+            <div className="flex-1 h-px bg-destructive/20" />
+          </div>
+          <Card className="border-destructive/30 bg-destructive/5">
+            <CardContent className="p-3">
+              <p className="text-xs text-destructive">
+                Estes cursos não aparecem na lista de votação dos júris e são excluídos dos resultados.
+              </p>
+            </CardContent>
+          </Card>
+          {disqualifiedCourses.map((course) => (
+            <CourseRow key={course.id} course={course} index={-1} isActive={false} />
+          ))}
+        </div>
+      )}
       {/* Add course dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
