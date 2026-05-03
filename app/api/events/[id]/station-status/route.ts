@@ -27,7 +27,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       },
     }),
     prisma.eventCourse.findMany({
-      where: { eventId, disqualified: false, hidden: false },
+      where: { eventId, hidden: false },
       orderBy: { entryOrder: "asc" },
     }),
     prisma.evaluation.findMany({
@@ -37,12 +37,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   ]);
 
   const totalCourses = courses.length;
+  const votableCourses = courses.filter((c) => !c.disqualified);
 
   const result = stations.map((station) => {
     const evaluatedIds = new Set(
       evaluations.filter((e) => e.stationId === station.id).map((e) => e.courseId)
     );
-    const currentCourse = courses.find((c) => !evaluatedIds.has(c.id)) ?? null;
+    const currentCourse = votableCourses.find((c) => !evaluatedIds.has(c.id)) ?? null;
 
     return {
       stationId: station.id,

@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
   if (!eventUser) return NextResponse.json({ error: "Not a member of this event" }, { status: 403 });
 
   const evaluation = await prisma.evaluation.upsert({
-    where: { courseId_stationId: { courseId, stationId } },
+    where: { courseId_stationId_jurorId: { courseId, stationId, jurorId: session.user.id } },
     create: {
       eventId,
       courseId,

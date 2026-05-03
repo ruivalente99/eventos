@@ -182,7 +182,7 @@ model Evaluation {
   juror   User        @relation(fields: [jurorId], references: [id], onDelete: Cascade)
   scores  EvaluationScore[]
 
-  @@unique([courseId, stationId])
+  @@unique([courseId, stationId, jurorId])
 }
 
 model EvaluationScore {

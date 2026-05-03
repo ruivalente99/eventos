@@ -22,14 +22,15 @@ function buildLeaderboard(
     const stationBreakdown: Record<string, { score: number; weight: number; juror: string }> = {};
 
     for (const station of stations) {
-      const eval_ = courseEvals.find((e) => e.stationId === station.id);
-      if (eval_) {
-        const normalized = computeNormalizedScore(eval_.scores, rootCriteria);
-        const weighted = normalized * station.weight;
+      const stationEvals = courseEvals.filter((e) => e.stationId === station.id);
+      if (stationEvals.length > 0) {
+        const scores = stationEvals.map((e) => computeNormalizedScore(e.scores, rootCriteria));
+        const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+        const weighted = avg * station.weight;
         stationBreakdown[station.name] = {
-          score: Math.round(normalized * 100) / 100,
+          score: Math.round(avg * 100) / 100,
           weight: station.weight,
-          juror: eval_.juror.name,
+          juror: stationEvals.map((e) => e.juror.name).join(", "),
         };
         totalWeighted += weighted;
       } else {

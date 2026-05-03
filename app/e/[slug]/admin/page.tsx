@@ -12,14 +12,17 @@ export default async function EventAdminPage({ params }: { params: Promise<{ slu
     where: { slug },
     include: {
       _count: { select: { users: true, courses: true, stations: true } },
-      courses: { where: { disqualified: false } },
       stations: { where: { active: true } },
     },
   });
   if (!event) notFound();
 
-  const totalEvals = await prisma.evaluation.count({ where: { eventId: event.id } });
-  const totalPossible = event.courses.length * event.stations.length;
+  const [totalEvals, totalJurors, totalCourses] = await Promise.all([
+    prisma.evaluation.count({ where: { eventId: event.id } }),
+    prisma.eventUser.count({ where: { eventId: event.id, role: "JURY" } }),
+    prisma.eventCourse.count({ where: { eventId: event.id, hidden: false } }),
+  ]);
+  const totalPossible = totalJurors * totalCourses;
 
   const base = `/e/${slug}/admin`;
   const stats = [
